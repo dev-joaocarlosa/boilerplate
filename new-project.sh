@@ -1,0 +1,55 @@
+#!/bin/bash
+set -e
+
+# Define your Github Organization
+ORG_NAME="dev-joaocarlosa"
+TEMPLATE_REPO="git@github.com:${ORG_NAME}/boilerplate.git"
+
+if [ -z "$1" ]; then
+    echo "❌ Usage: ./new-project.sh <project-name>"
+    echo "Example: ./new-project.sh meu-novo-app"
+    exit 1
+fi
+
+PROJECT_NAME=$1
+TARGET_DIR="../${PROJECT_NAME}"
+
+echo "🚀 Iniciando a derivação do Boilerplate para o projeto: ${PROJECT_NAME}..."
+
+# 1. Clone the boilerplate without history
+echo "📦 Baixando o Boilerplate..."
+git clone --depth 1 $TEMPLATE_REPO $TARGET_DIR
+
+# 2. Navigate to the new project and remove old git link
+cd $TARGET_DIR
+rm -rf .git
+echo "🧹 Removendo vínculos do Boilerplate."
+
+# 3. Create .env from example (Minimax keys and DB are fresh)
+if [ -f ".env.example" ]; then
+    cp .env.example .env
+    echo "📄 Arquivo .env gerado. O seu ANTHROPIC_AUTH_TOKEN (MiniMax) precisa ser preenchido nele ou no DevContainer depois!"
+fi
+
+# 4. Initialize fresh git repository
+echo "🌱 Inicializando novo repositório Git..."
+git config --global init.defaultBranch main || true
+git init
+git add .
+git commit -m "Initial commit from Boilerplate (Laravel + React + Shadcn + Ralph)"
+
+# 5. Create remote repository using GitHub CLI (gh)
+echo "☁️  Criando repositório na organização ${ORG_NAME} via Github CLI..."
+if ! command -v gh &> /dev/null; then
+    echo "⚠️  O Github CLI (gh) não está instalado ou não foi encontrado."
+    echo "Por favor instale (brew install gh), faça login (gh auth login) e rode manualmente:"
+    echo "  gh repo create ${ORG_NAME}/${PROJECT_NAME} --private --source=. --remote=origin --push"
+else
+    gh repo create "${ORG_NAME}/${PROJECT_NAME}" --private --source=. --remote=origin --push
+    echo "✅ Projeto ${PROJECT_NAME} criado com sucesso e commitado em: https://github.com/${ORG_NAME}/${PROJECT_NAME}"
+fi
+
+echo "🎉 Pronto! O seu novo ambiente autônomo está pronto."
+echo "➡️  Próximos passos:"
+echo "   cd ${TARGET_DIR}"
+echo "   code . (e abra no Dev Container!)"
