@@ -1,0 +1,399 @@
+# Exemplos de Sugestões de Code Review
+
+Este documento contém exemplos práticos de como formatar sugestões de melhorias no code review.
+
+---
+
+## 1. Namespace Completo Inline
+
+### ❌ Problema encontrado
+```php
+$entity = new \App\Entities\Google\CampaignEntity($data);
+```
+
+### ✅ Sugestão de correção
+```php
+use App\Entities\Google\CampaignEntity;
+
+// No código
+$entity = new CampaignEntity($data);
+```
+
+### 📝 Mensagem para thread
+> **🔴 IMPEDITIVO - Namespace completo inline**
+>
+> Usar namespace completo inline viola os padrões do projeto.
+>
+> **Linha X**: `new \App\Entities\Google\CampaignEntity()`
+>
+> **Correção**: Adicionar `use App\Entities\Google\CampaignEntity;` nos imports.
+
+---
+
+## 2. String Hardcoded
+
+### ❌ Problema encontrado
+```php
+throw new ClientException('Erro ao buscar campanha');
+```
+
+### ✅ Sugestão de correção
+```php
+throw new ClientException(GoogleErrorMessageEnum::CAMPAIGN_NOT_FOUND->value);
+```
+
+### 📝 Mensagem para thread
+> **🔴 IMPEDITIVO - String hardcoded**
+>
+> Mensagens de erro devem usar ENUMs para facilitar manutenção e consistência.
+>
+> **Linha X**: `throw new ClientException('Erro ao buscar campanha')`
+>
+> **Correção**: Criar ou usar enum existente em `App\Enums\Google\GoogleErrorMessageEnum`.
+
+---
+
+## 3. getMessage() em Log
+
+### ❌ Problema encontrado
+```php
+ApiLog::error('Project - Service - Error', [
+    'message' => $exception->getMessage(),
+    'code' => $exception->getCode()
+]);
+```
+
+### ✅ Sugestão de correção
+```php
+ApiLog::error('Project - Service - Error', [
+    'exception' => $exception
+]);
+```
+
+### 📝 Mensagem para thread
+> **🔴 IMPEDITIVO - getMessage() em contexto de log**
+>
+> O padrão do projeto é passar a exceção completa no contexto do log, não getMessage().
+>
+> **Linha X**: `'message' => $exception->getMessage()`
+>
+> **Correção**: Usar `'exception' => $exception` para que o handler de log capture stack trace e informações completas.
+
+---
+
+## 4. Acesso Direto ao Shop
+
+### ❌ Problema encontrado
+```php
+$storeId = $this->shop->store_id;
+$accountId = $this->shop->account_id;
+```
+
+### ✅ Sugestão de correção
+```php
+$storeId = store_id();
+$accountId = account_id();
+```
+
+### 📝 Mensagem para thread
+> **🔴 IMPEDITIVO - Acesso direto a propriedades do shop**
+>
+> O projeto possui helpers para acessar dados do shop de forma padronizada.
+>
+> **Linha X**: `$this->shop->store_id`
+>
+> **Correção**: Usar helper `store_id()` ou `account_id()`.
+
+---
+
+## 5. Falta de Interface
+
+### ❌ Problema encontrado
+```php
+class CampaignService
+{
+    public function create(array $data): CampaignEntity
+    {
+        // ...
+    }
+}
+```
+
+### ✅ Sugestão de correção
+```php
+// Interface
+interface CampaignServiceInterface
+{
+    /**
+     * Cria uma nova campanha.
+     *
+     * @param array $data Dados da campanha
+     * @return CampaignEntity
+     * @throws ClientException
+     */
+    public function create(array $data): CampaignEntity;
+}
+
+// Service
+class CampaignService implements CampaignServiceInterface
+{
+    /**
+     * @inheritDoc
+     */
+    public function create(array $data): CampaignEntity
+    {
+        // ...
+    }
+}
+```
+
+### 📝 Mensagem para thread
+> **⚠️ MELHORIA - Falta interface para o Service**
+>
+> Todo Service deve implementar uma interface correspondente.
+>
+> **Sugestão**: Criar `CampaignServiceInterface` em `App\Contracts\Services\Google\`.
+
+---
+
+## 6. Método Muito Longo
+
+### ❌ Problema encontrado
+```php
+public function processData(array $data): array
+{
+    // 50+ linhas de código
+}
+```
+
+### ✅ Sugestão de correção
+```php
+public function processData(array $data): array
+{
+    $validated = $this->validateData($data);
+    $transformed = $this->transformData($validated);
+    return $this->persistData($transformed);
+}
+
+private function validateData(array $data): array
+{
+    // ...
+}
+
+private function transformData(array $data): array
+{
+    // ...
+}
+
+private function persistData(array $data): array
+{
+    // ...
+}
+```
+
+### 📝 Mensagem para thread
+> **⚠️ MELHORIA - Método muito longo**
+>
+> O método `processData()` tem ~50 linhas. O recomendado é máximo 20 linhas.
+>
+> **Sugestão**: Extrair responsabilidades para métodos privados como `validateData()`, `transformData()`, `persistData()`.
+
+---
+
+## 7. Falta de Early Return
+
+### ❌ Problema encontrado
+```php
+public function getData(int $id): ?array
+{
+    if ($this->hasPermission()) {
+        if ($this->isValid($id)) {
+            $data = $this->repository->find($id);
+            if ($data) {
+                return $data->toArray();
+            } else {
+                return null;
+            }
+        } else {
+            throw new ClientException('ID inválido');
+        }
+    } else {
+        throw new UnauthorizedException('Sem permissão');
+    }
+}
+```
+
+### ✅ Sugestão de correção
+```php
+public function getData(int $id): ?array
+{
+    if (!$this->hasPermission()) {
+        throw new UnauthorizedException('Sem permissão');
+    }
+
+    if (!$this->isValid($id)) {
+        throw new ClientException('ID inválido');
+    }
+
+    $data = $this->repository->find($id);
+
+    if (!$data) {
+        return null;
+    }
+
+    return $data->toArray();
+}
+```
+
+### 📝 Mensagem para thread
+> **⚠️ MELHORIA - Usar early returns**
+>
+> Múltiplos níveis de if/else aninhados. Preferir early returns para melhor legibilidade.
+>
+> **Sugestão**: Inverter condições e retornar/lançar exceção cedo.
+
+---
+
+## 8. Falta de Teste
+
+### ❌ Problema encontrado
+Novo método `createCampaign()` sem teste correspondente.
+
+### ✅ Sugestão de correção
+```php
+/**
+ * Testa a função createCampaign e espera sucesso.
+ */
+public function test_createCampaign_function_and_returns_campaign_entity()
+{
+    // Arrange
+    $service = new CampaignService();
+    $data = ['name' => 'Test Campaign'];
+
+    CampaignRepository::partialMock()
+        ->shouldReceive('create')
+        ->once()
+        ->with($data)
+        ->andReturn(new CampaignEntity(['id' => 1, 'name' => 'Test Campaign']));
+
+    // Act
+    $result = $service->createCampaign($data);
+
+    // Assert
+    $this->assertInstanceOf(CampaignEntity::class, $result);
+    $this->assertEquals('Test Campaign', $result->name);
+}
+```
+
+### 📝 Mensagem para thread
+> **🔴 IMPEDITIVO - Método sem teste**
+>
+> O método `createCampaign()` foi adicionado mas não há teste correspondente.
+>
+> **Sugestão**: Criar teste em `tests/Unit/Services/Google/CampaignServiceTest.php` seguindo padrão AAA.
+
+---
+
+## 9. Exposição de Exception Genérica
+
+### ❌ Problema encontrado
+```php
+catch (Exception $exception) {
+    ApiLog::error('Erro', ['exception' => $exception]);
+    throw new Exception('Erro: ' . $exception->getMessage());
+}
+```
+
+### ✅ Sugestão de correção
+```php
+catch (Exception $exception) {
+    ApiLog::error('Erro', ['exception' => $exception]);
+    throw new Exception('Erro ao processar campanha.');
+}
+```
+
+### 📝 Mensagem para thread
+> **🔴 IMPEDITIVO - Exposição de detalhes internos**
+>
+> O getMessage() de exceções genéricas pode conter informações sensíveis.
+>
+> **Linha X**: `throw new Exception('Erro: ' . $exception->getMessage())`
+>
+> **Correção**: Usar mensagem genérica e amigável. O log já contém detalhes completos.
+
+---
+
+## 10. Falta de PHPDoc em Array de Retorno
+
+### ❌ Problema encontrado
+```php
+/**
+ * Busca dados da campanha.
+ *
+ * @param int $id
+ * @return array
+ */
+public function getCampaignData(int $id): array
+{
+    return [
+        'id' => $campaign->id,
+        'name' => $campaign->name,
+        'status' => $campaign->status,
+        'budget' => [
+            'daily' => $campaign->daily_budget,
+            'total' => $campaign->total_budget
+        ]
+    ];
+}
+```
+
+### ✅ Sugestão de correção
+```php
+/**
+ * Busca dados da campanha.
+ *
+ * @param int $id
+ * @return array{
+ *     id: int,
+ *     name: string,
+ *     status: string,
+ *     budget: array{
+ *         daily: float,
+ *         total: float
+ *     }
+ * }
+ */
+public function getCampaignData(int $id): array
+{
+    // ...
+}
+```
+
+### 📝 Mensagem para thread
+> **⚠️ MELHORIA - Documentar estrutura do array de retorno**
+>
+> Métodos que retornam arrays devem ter a estrutura documentada com array shapes.
+>
+> **Sugestão**: Adicionar `@return array{id: int, name: string, ...}` no PHPDoc.
+
+---
+
+## Formato Padrão de Mensagem
+
+```markdown
+**[EMOJI] [CLASSIFICAÇÃO] - [Título curto]**
+
+[Descrição do problema]
+
+**Linha X**: `[código problemático]`
+
+**Correção**: [Como corrigir]
+
+[Opcional: Código de exemplo]
+```
+
+### Emojis por classificação
+- 🔴 IMPEDITIVO
+- ⚠️ MELHORIA
+- 🟢 MENOR
+- ✅ POSITIVO (para elogios)

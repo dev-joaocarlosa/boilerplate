@@ -1,0 +1,295 @@
+# Critérios Técnicos de Code Review
+
+## 1. Validações Automatizadas
+
+### 1.1 Pint (PSR-12)
+- Verifica formatação PSR-12
+- Comando: `./vendor/bin/pint --test`
+
+### 1.2 PHPMD
+- Verifica complexidade ciclomática
+- Verifica métodos longos
+- Verifica classes grandes
+- Verifica variáveis não utilizadas
+
+### 1.3 PHPStan (Level 3+)
+- Tipos de retorno corretos
+- Parâmetros tipados
+- Uso correto de null-safe operators
+
+### 1.4 GrumPHP
+- Validação pré-commit
+- Deve passar sem erros
+
+---
+
+## 2. Padrões do Projeto Project
+
+### 2.1 Imports
+❌ **IMPEDITIVO**: Usar namespace completo inline
+```php
+// ❌ ERRADO
+$entity = new \App\Entities\Google\CampaignEntity();
+
+// ✅ CORRETO
+use App\Entities\Google\CampaignEntity;
+$entity = new CampaignEntity();
+```
+
+### 2.2 ENUMs
+❌ **IMPEDITIVO**: Strings hardcoded para mensagens/status
+```php
+// ❌ ERRADO
+throw new ClientException('Erro ao buscar campanha');
+
+// ✅ CORRETO
+throw new ClientException(GoogleErrorMessageEnum::CAMPAIGN_NOT_FOUND->value);
+```
+
+### 2.3 Helpers
+❌ **IMPEDITIVO**: Acessar propriedades do shop diretamente
+```php
+// ❌ ERRADO
+$storeId = $this->shop->store_id;
+
+// ✅ CORRETO
+$storeId = store_id();
+```
+
+### 2.4 Logs
+❌ **IMPEDITIVO**: Usar getMessage() em contexto de log
+```php
+// ❌ ERRADO
+ApiLog::error('Erro', ['message' => $exception->getMessage()]);
+
+// ✅ CORRETO
+ApiLog::error('Erro', ['exception' => $exception]);
+```
+
+### 2.5 Interfaces
+⚠️ **ATENÇÃO**: Interface deve estar sincronizada com Service
+- Todos os métodos públicos do Service devem estar na Interface
+- PHPDoc deve estar APENAS na Interface
+- Service usa `@inheritDoc`
+
+### 2.6 Constantes
+❌ **IMPEDITIVO**: Valores hardcoded no código
+```php
+// ❌ ERRADO
+$timeout = 30;
+
+// ✅ CORRETO - usar config ou const
+$timeout = config('google.timeout');
+// ou
+private const TIMEOUT_SECONDS = 30;
+```
+
+### 2.7 API (Product API)
+❌ **IMPEDITIVO**: Import V1 fora de Factory/ClientService
+```php
+// ❌ ERRADO - Import V1 em Service de negócio
+use Google\Shopping\Product\Accounts\V1\Homepage;
+
+// ❌ ERRADO - Import V1 em arquivo de teste
+use Google\Shopping\Product\Accounts\V1\Client\HomepageServiceClient;
+
+// ✅ CORRETO - V1 apenas em Factory e ClientService
+// Em Factory: use Google\Shopping\Product\Accounts\V1\GetAccountRequest;
+// Em Teste: Mockery::mock() sem tipar com classe V1
+```
+
+---
+
+## 3. SOLID
+
+### 3.1 Single Responsibility
+- Classe deve ter apenas uma razão para mudar
+- Métodos não devem fazer múltiplas coisas
+
+### 3.2 Open/Closed
+- Usar interfaces para extensibilidade
+- Evitar switch/case para tipos (usar polimorfismo)
+
+### 3.3 Liskov Substitution
+- Subtipos devem ser substituíveis
+- Não violar contratos de interfaces
+
+### 3.4 Interface Segregation
+- Interfaces pequenas e específicas
+- Evitar interfaces "gordas"
+
+### 3.5 Dependency Inversion
+- Depender de abstrações (interfaces)
+- Usar injeção de dependência
+
+---
+
+## 4. Object Calisthenics
+
+### 4.1 Um nível de indentação por método
+⚠️ Máximo 2 níveis permitidos em casos excepcionais
+
+### 4.2 Não usar ELSE
+```php
+// ❌ ERRADO
+if ($condition) {
+    return $a;
+} else {
+    return $b;
+}
+
+// ✅ CORRETO - early return
+if ($condition) {
+    return $a;
+}
+return $b;
+```
+
+### 4.3 Encapsular primitivos
+Para dados com significado de negócio, considerar value objects
+
+### 4.4 First Class Collections
+Coleções devem ser encapsuladas em classes próprias quando necessário
+
+### 4.5 Um ponto por linha
+```php
+// ❌ EVITAR (muitos pontos)
+$name = $this->user->getProfile()->getName()->getFirst();
+
+// ✅ PREFERIR
+$profile = $this->user->getProfile();
+$name = $profile->getName();
+$firstName = $name->getFirst();
+```
+
+### 4.6 Não abreviar
+Nomes completos e descritivos
+
+### 4.7 Classes pequenas
+- Máximo ~200 linhas por classe
+- Máximo ~20 linhas por método
+
+### 4.8 Máximo 2 variáveis de instância
+Sinal de que classe faz demais
+
+### 4.9 Sem getters/setters públicos desnecessários
+Preferir métodos com comportamento
+
+---
+
+## 5. Testes
+
+### 5.1 Estrutura
+- Cada Service DEVE ter teste correspondente
+- Cada Controller DEVE ter Feature test
+- Padrão AAA (Arrange-Act-Assert)
+
+### 5.2 Nomenclatura
+```php
+// Sucesso
+test_{metodo}_function_and_returns_{resultado}
+
+// Exceção
+test_throw_exception_by_{tipo}_in_{metodo}_function
+
+// Validação
+test_should_throw_validation_exception_when_{condicao}
+```
+
+### 5.3 Mocks
+- Facades: usar `partialMock()`
+- Services: usar `Mockery::mock()->makePartial()`
+- Entidades: instanciar diretamente
+
+### 5.4 Cobertura
+- Mínimo: 80% de cobertura
+- Todos os fluxos de exceção testados
+- Todos os branches testados
+
+---
+
+## 6. Documentação
+
+### 6.1 PHPDoc
+- Em português
+- Obrigatório em métodos públicos de Interface
+- Service usa `@inheritDoc`
+- Documentar `@throws`
+
+### 6.2 Arrays
+- Estrutura de arrays de retorno DEVE ser documentada
+```php
+/**
+ * @return array{
+ *     success: bool,
+ *     data: array{
+ *         id: int,
+ *         name: string
+ *     }
+ * }
+ */
+```
+
+### 6.3 Bruno API
+- Todo endpoint DEVE ter documentação Bruno
+- Incluir exemplos de request/response
+
+---
+
+## 7. Performance e Cache
+
+### 7.1 N+1 Queries
+- Usar eager loading quando necessário
+- Verificar queries em loops
+
+### 7.2 Cache
+- Usar cache para dados que não mudam frequentemente
+- Invalidar cache corretamente
+
+---
+
+## 8. Segurança
+
+### 8.1 Validação de Entrada
+- SEMPRE validar dados de entrada
+- Usar Laravel Validator
+
+### 8.2 Exceptions
+- ClientException: mensagem detalhada (pode expor ao usuário)
+- Exception genérica: mensagem genérica (NUNCA expor getMessage())
+```php
+// ❌ ERRADO - Expondo detalhes internos
+catch (Exception $e) {
+    throw new Exception('Erro: ' . $e->getMessage());
+}
+
+// ✅ CORRETO
+catch (Exception $e) {
+    ApiLog::error('Erro interno', ['exception' => $e]);
+    throw new Exception('Erro ao processar requisição.');
+}
+```
+
+---
+
+## 9. Classificação de Problemas
+
+### 🔴 IMPEDITIVO (Bloqueia merge)
+- Namespace completo inline
+- Strings hardcoded para mensagens
+- getMessage() em logs
+- Propriedades do shop acessadas diretamente
+- Falta de testes
+- Exposição de Exception genérica
+
+### 🟡 MELHORIA (Sugestão)
+- Método muito longo (>20 linhas)
+- Classe muito grande (>200 linhas)
+- Falta de early return
+- Documentação incompleta
+- Código duplicado
+
+### 🟢 MENOR (Opcional)
+- Nomenclatura poderia ser melhor
+- Ordenação de imports
+- Espaçamento

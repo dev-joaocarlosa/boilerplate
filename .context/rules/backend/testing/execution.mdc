@@ -1,0 +1,37 @@
+---
+alwaysApply: false
+---
+# Execução de Testes
+
+## Via Docker (Recomendado)
+
+```bash
+docker compose exec -T app php artisan test --filter="NomeDoTesteTest"
+```
+
+> **Porque Docker?** O container garante mesmas versões de PHP/extensões. Sempre valide comandos localmente com `docker compose exec -T app ...` para evitar diferenças de ambiente.
+
+## Exemplos de Comandos
+
+```bash
+# Executar teste específico
+docker compose exec -T app php artisan test --filter="BudgetPersistenceServiceTest"
+
+# Executar todos os testes de uma classe
+docker compose exec -T app php artisan test --filter="GoogleProjectControllerBudgetTest"
+
+# Executar todos os testes
+docker compose exec -T app php artisan test
+```
+
+## Tipos de Testes e Localização
+
+### Testes Unitários (Services, Repositories, etc.)
+- **Localização**: `tests/Unit/`
+- **Namespace**: `Tests\Unit`
+- **Objetivo**: Testar lógica de negócio isolada
+
+### Testes de Feature (Controllers)
+- **Localização**: `tests/Feature/`
+- **Namespace**: `Tests\Feature\[Domain]`
+- **Objetivo**: Testar endpoints HTTP e integração com services

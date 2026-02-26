@@ -1,0 +1,138 @@
+---
+alwaysApply: true
+---
+
+# Frontend Rules - Vue 3 & React
+
+Regras críticas para desenvolvimento frontend. Baseado em [antfu/skills](https://github.com/antfu/skills).
+
+## 🔴 REGRAS CRÍTICAS (Bloqueiam MR)
+
+### 1. SEMPRE Composition API com `<script setup>`
+
+```vue
+<!-- ✅ CORRETO -->
+<script setup lang="ts">
+import { ref, computed } from 'vue'
+</script>
+
+<!-- ❌ PROIBIDO - Options API -->
+<script>
+export default {
+  data() { return {} }
+}
+</script>
+```
+
+### 2. SEMPRE TypeScript
+
+```vue
+<!-- ✅ CORRETO -->
+<script setup lang="ts">
+const props = defineProps<{ title: string }>()
+const emit = defineEmits<{ update: [value: string] }>()
+</script>
+
+<!-- ❌ PROIBIDO - JavaScript puro -->
+<script setup>
+const props = defineProps(['title'])
+</script>
+```
+
+### 3. NUNCA destruturar reactive() ou props
+
+```ts
+// ❌ PERDE REATIVIDADE
+const { name } = props
+const { count } = reactive({ count: 0 })
+
+// ✅ CORRETO
+const { name } = toRefs(props)
+props.name
+```
+
+### 4. Pinia: SEMPRE storeToRefs para state/getters
+
+```ts
+// ❌ PERDE REATIVIDADE
+const { user, isLoading } = useUserStore()
+
+// ✅ CORRETO
+const store = useUserStore()
+const { user, isLoading } = storeToRefs(store)
+const { login, logout } = store // Actions podem ser desestruturadas
+```
+
+### 5. NUNCA v-if com v-for no mesmo elemento
+
+```vue
+<!-- ❌ PROIBIDO -->
+<div v-for="item in items" v-if="item.active">
+
+<!-- ✅ CORRETO - Use computed -->
+<div v-for="item in activeItems">
+```
+
+### 6. NUNCA mutações em computed
+
+```ts
+// ❌ ERRADO - Muta o original
+const sorted = computed(() => {
+  items.value.sort() // MUTA!
+  return items.value
+})
+
+// ✅ CORRETO - Cria cópia
+const sorted = computed(() => [...items.value].sort())
+```
+
+### 7. Props são READONLY
+
+```ts
+// ❌ PROIBIDO
+props.user.name = 'New Name'
+
+// ✅ CORRETO - Emitir evento
+emit('update:user', { ...props.user, name: 'New Name' })
+```
+
+## ⚠️ BOAS PRÁTICAS
+
+### Performance
+
+- Usar `shallowRef` para objetos grandes/externos
+- Usar `v-once` para conteúdo estático
+- Usar `v-memo` para listas pesadas
+- Virtualizar listas com 100+ itens
+
+### Organização
+
+```
+src/
+├── components/
+│   ├── common/       # Reutilizáveis
+│   └── features/     # Por feature
+├── composables/      # use*.ts
+├── stores/           # Pinia stores
+├── types/            # TypeScript types
+└── utils/            # Funções puras
+```
+
+### Nomenclatura
+
+| Tipo | Convenção | Exemplo |
+|------|-----------|---------|
+| Componentes | PascalCase | `UserCard.vue` |
+| Composables | camelCase + use | `useUser.ts` |
+| Stores | camelCase + use | `useUserStore` |
+| Types | PascalCase | `User`, `UserProps` |
+
+## 📋 Checklist de Review
+
+- [ ] Composition API + `<script setup lang="ts">`
+- [ ] Props e emits tipados
+- [ ] Sem destruturação de reactive/props
+- [ ] storeToRefs para Pinia
+- [ ] Sem v-if + v-for juntos
+- [ ] Sem mutação de props
+- [ ] Sem mutação em computed

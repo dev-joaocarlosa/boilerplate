@@ -1,0 +1,119 @@
+---
+alwaysApply: false
+---
+# Estrutura de Testes
+
+## Testes Unitários - Estrutura de Classe
+
+```php
+<?php
+
+namespace Tests\Unit;
+
+use Tests\TestCase;
+use ReflectionMethod;
+use Mockery;
+
+class NomeDoServicoTest extends TestCase
+{
+    // Testes aqui
+}
+```
+
+## Testes de Controllers - Estrutura de Classe
+
+```php
+<?php
+
+namespace Tests\Feature\Google;
+
+use Tests\TestCase;
+use App\Facades\Google\NomeFacade;
+
+class NomeControllerTest extends TestCase
+{
+    // Testes aqui
+}
+```
+
+## Imports Obrigatórios
+
+- `Tests\TestCase` - Classe base para todos os testes
+- `ReflectionMethod` - Para testar métodos privados/protegidos
+- `Mockery` - Para mocks parciais de classes de serviço
+- Entidades relevantes (`App\Entities\...`)
+- Facades utilizadas (`App\Facades\...`)
+- Exceções (`App\Exceptions\ClientException`, `Exception`, `ValidationException`)
+
+## Agrupamento de Imports
+
+Quando importar múltiplas classes do mesmo namespace, sempre usar agrupamento:
+
+```php
+// ✅ Correto
+use Illuminate\Http\Client\{
+    ConnectionException,
+    PendingRequest,
+    Response
+};
+
+// ❌ Errado
+use Illuminate\Http\Client\ConnectionException;
+use Illuminate\Http\Client\PendingRequest;
+use Illuminate\Http\Client\Response;
+```
+
+## Padrões de Nomenclatura
+
+### Nomes de Métodos de Teste
+- **Sucesso**: `test_{metodo}_function_and_returns_{resultado_esperado}`
+- **Exceção**: `test_throw_exception_by_{tipo_excecao}_in_{metodo}_function`
+- **Validação com sucesso**: `test_should_be_pass_the_validation_of_the_data_to_{metodo}_function`
+- **Validação com falha**: `test_should_throw_validation_exception_when_{condicao}_to_{metodo}`
+
+### Comentários PHPDoc
+
+```php
+/**
+ * Descrição clara do que o teste está validando.
+ */
+```
+
+## Formatação e Alinhamento
+
+### Alinhamento de Arrays
+
+Quando houver múltiplos arrays um abaixo do outro, sempre manter os `=>` alinhados:
+
+```php
+// ✅ Correto
+config(['config.url'         => 'http://localhost:8080']);
+config(['platform.store_id' => 123]);
+
+// ❌ Errado
+config(['config.url' => 'http://localhost:8080']);
+config(['platform.store_id' => 123]);
+```
+
+### Alinhamento de Sinais de Igualdade
+
+Quando houver múltiplas atribuições sequenciais, alinhar os sinais de igualdade (`=`):
+
+```php
+// ✅ Correto
+$this->responseFactoryABC = Mockery::mock(CachedResponseFactoryInterface::class);
+$this->mockHttpClient     = Mockery::mock(PendingRequest::class);
+
+// ❌ Errado
+$this->responseFactoryABC = Mockery::mock(CachedResponseFactoryInterface::class);
+$this->mockHttpClient = Mockery::mock(PendingRequest::class);
+```
+
+## Não Utilizar
+
+- ❌ Mocks globais ou fixtures
+- ❌ Testes dependentes entre si
+- ❌ Instanciação de Facades (sempre usar mock)
+- ❌ Hardcoding de valores sem variáveis explicativas
+- ❌ Importar classes que não sejam usadas no teste
+- ❌ Usar classes sem importá-las explicitamente com `use` (ex: `new \ReflectionClass($this->service)` em vez de importar `ReflectionClass`)

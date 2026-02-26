@@ -1,0 +1,161 @@
+---
+alwaysApply: false
+---
+# Facades e Interfaces Pattern
+
+## Interface Pattern
+
+### Estrutura
+```php
+<?php
+
+namespace App\Contracts\Services\[Domain];
+
+interface [ServiceName]Interface
+{
+    /**
+     * [Descrição em português]
+     *
+     * @param [tipo] $param
+     * @return array
+     */
+    public function [methodName]([tipo] $param): array;
+}
+```
+
+### Exemplo
+```php
+<?php
+
+namespace App\Contracts\Services\Campaign;
+
+interface CampaignServiceInterface
+{
+    /**
+     * Obtém campanha do usuário
+     *
+     * @return array
+     */
+    public function getCampaign(): array;
+
+    /**
+     * Obtém todas as campanhas do usuário
+     *
+     * @return array
+     */
+    public function getAllCampaigns(): array;
+}
+```
+
+### Checklist Interface
+- ✅ Namespace: `App\Contracts\Services\[Domain]` ou `App\Contracts\Repositories\[Domain]`
+- ✅ Nome: `[ServiceName]Interface`
+- ✅ Métodos com PHPDoc completo em português
+- ✅ Sem descrição de parâmetros
+
+## Facade Pattern
+
+### Estrutura
+```php
+<?php
+
+namespace App\Facades\[Domain];
+
+use App\Contracts\Services\[Domain]\[ServiceName]Interface;
+use Illuminate\Support\Facades\Facade;
+
+/**
+ * @method static array [methodName]([tipo] $param)
+ * @method static void [updateMethod]([tipo] $param)
+ *
+ * @see [ServiceName]Interface
+ */
+class [ServiceName] extends Facade
+{
+    /**
+     * Get the registered name of the component.
+     *
+     * @return string
+     */
+    protected static function getFacadeAccessor()
+    {
+        return [ServiceName]Interface::class;
+    }
+}
+```
+
+### Exemplo
+```php
+<?php
+
+namespace App\Facades\Campaign;
+
+use App\Contracts\Services\Campaign\CampaignServiceInterface;
+use Illuminate\Support\Facades\Facade;
+
+/**
+ * @method static array getCampaign()
+ * @method static array getAllCampaigns()
+ *
+ * @see CampaignServiceInterface
+ */
+class CampaignService extends Facade
+{
+    /**
+     * Get the registered name of the component.
+     *
+     * @return string
+     */
+    protected static function getFacadeAccessor()
+    {
+        return CampaignServiceInterface::class;
+    }
+}
+```
+
+### Checklist Facade
+- ✅ Namespace: `App\Facades\[Domain]` ou `App\Facades\Repositories\[Domain]`
+- ✅ Import da Interface correspondente
+- ✅ PHPDoc com `@method static` para cada método
+- ✅ `@see [ServiceName]Interface`
+- ✅ `getFacadeAccessor()` retorna `[ServiceName]Interface::class`
+- ✅ Comentário: "Get the registered name of the component."
+
+## Service Provider Registration
+
+### Estrutura
+```php
+// DomainServiceProvider.php
+public function register()
+{
+    // Services
+    $this->app->bind(CampaignServiceInterface::class, CampaignService::class);
+    $this->app->bind(CampaignCreateServiceInterface::class, CampaignCreateService::class);
+
+    // Repositories
+    $this->app->bind(ProductRepositoryInterface::class, ProductRepository::class);
+    $this->app->bind(AccountRepositoryInterface::class, AccountRepository::class);
+}
+```
+
+## Fluxo Completo
+
+```
+Interface → Facade → Service Implementation
+    ↓           ↓              ↓
+Contract    Static Access   Business Logic
+```
+
+### Exemplo de Uso
+```php
+// No Controller ou outro Service
+use App\Facades\Campaign\CampaignService;
+
+// Chamada via Facade (acesso estático)
+$campaign = CampaignService::getCampaign();
+
+// Por baixo dos panos:
+// 1. Facade chama getFacadeAccessor() → CampaignServiceInterface::class
+// 2. Container resolve para CampaignService (via ServiceProvider)
+// 3. Método getCampaign() é executado
+```

@@ -1,0 +1,265 @@
+---
+alwaysApply: false
+---
+# Testando Traits
+
+## 📚 Índice
+
+1. [Visão Geral](#visão-geral)
+2. [Resumo Rápido](#resumo-rápido)
+3. [Métodos Públicos de Traits](#testando-métodos-públicos-de-traits)
+4. [Métodos Privados de Traits](#testando-métodos-privados-de-traits)
+5. [Helper Reutilizável](#helper-reutilizável)
+6. [Quando Usar Cada Abordagem](#quando-usar-cada-abordagem)
+
+---
+
+## Visão Geral
+
+Traits no PHP são blocos de código reutilizáveis. Testar métodos de traits requer abordagens diferentes dependendo da **visibilidade** do método.
+
+### Desafios ao Testar Traits
+
+- ✅ **Métodos Públicos**: Podem ser mockados diretamente com `getMockBuilder`
+- ⚠️ **Métodos Privados**: Requerem mock da estrutura interna com `overload`
+
+---
+
+## Resumo Rápido
+
+| Situação | O que fazer |
+|----------|-------------|
+| Trait expõe método `public/protected` | `getMockBuilder()->onlyMethods([...])` |
+| Trait usa método `private` com `new ...` | Helper + `Mockery::mock('overload:...')` |
+| Fluxo complexo com SDKs/Builders | Helper central reutilizável |
+
+---
+
+## Testando Métodos Públicos de Traits
+
+Use quando precisar interceptar **métodos públicos ou protected** da trait.
+
+### Abordagem: Mock Direto
+
+```php
+public function test_unlinkAccountAds_with_public_trait_method()
+{
+    // Arrange
+    $accountEntity = new AccountEntity([
+        'id'          => 1,
+        'account_ads' => [
+            'customer_id'     => '1234567890',
+            'manager_link_id' => 'manager_link_123'
+        ]
+    ]);
+
+    $mockGoogleAdsClient = Mockery::mock(GoogleAdsClient::class);
+
+    // Mock do método PÚBLICO da trait
+    $mockService = $this->getMockBuilder(GoogleAdsConnectService::class)
+        ->onlyMethods(['getAccount', 'getGoogleAdsClientBy'])
+        ->getMock();
+
+    $mockService->expects($this->once())
+        ->method('getAccount')
+        ->willReturn($accountEntity);
+
+    $mockService->expects($this->once())
+        ->method('getGoogleAdsClientBy')
+        ->willReturn($mockGoogleAdsClient);
+
+    // Act
+    $mockService->unlinkAccountAds();
+
+    // Assert
+    $this->assertTrue(true);
+}
+```
+
+### ✅ Vantagens
+- Simples e direto
+- Usa funcionalidades nativas do PHPUnit
+
+### ❌ Limitações
+- Só funciona com métodos **públicos** ou **protected**
+
+---
+
+## Testando Métodos Privados de Traits
+
+Use quando o método é `private` ou instancia SDKs com `new`.
+
+### Por Que Não Podemos Mockar Diretamente?
+
+```php
+trait GoogleProjectAuthClient
+{
+    // ❌ Método PRIVADO - não pode ser mockado com getMockBuilder
+    private function getGoogleAdsClientBy(string $adsCustomerId, string $refreshToken): GoogleAdsClient
+    {
+        return (new GoogleAdsClientBuilder())  // ← Chamada real ao Google
+            ->withOAuth2Credential($this->getOAuth2Credential($adsCustomerId, $refreshToken))
+            ->build();
+    }
+}
+```
+
+### ✅ Solução: Mockar a Estrutura Interna
+
+```php
+/**
+ * Helper: Mocka a estrutura interna da trait GoogleProjectAuthClient.
+ */
+private function mockGoogleAdsClientByStructure(GoogleAdsClient $mockGoogleAdsClient): void
+{
+    // Mock do OAuth2Credential
+    $mockOAuth2Credential = Mockery::mock(\Google\Auth\FetchAuthTokenInterface::class);
+    
+    // Mock do OAuth2TokenBuilder com overload
+    $mockOAuth2Builder = Mockery::mock('overload:' . \Google\Ads\GoogleAds\Lib\OAuth2TokenBuilder::class);
+    $mockOAuth2Builder->shouldReceive('from')->andReturnSelf();
+    $mockOAuth2Builder->shouldReceive('build')->andReturn($mockOAuth2Credential);
+
+    // Mock do GoogleAdsClientBuilder com overload
+    $mockBuilder = Mockery::mock('overload:' . \Google\Ads\GoogleAds\Lib\V20\GoogleAdsClientBuilder::class);
+    $mockBuilder->shouldReceive('withOAuth2Credential')->andReturnSelf();
+    $mockBuilder->shouldReceive('from')->andReturnSelf();
+    $mockBuilder->shouldReceive('withTransport')->andReturnSelf();
+    $mockBuilder->shouldReceive('build')->andReturn($mockGoogleAdsClient);
+}
+```
+
+### Usar o Helper no Teste
+
+```php
+public function test_unlinkAccountAds_function_and_returns_success()
+{
+    // Arrange
+    $accountEntity = new AccountEntity([
+        'id'          => 1,
+        'account_ads' => [
+            'customer_id'     => '1234567890',
+            'manager_link_id' => 'manager_link_123'
+        ]
+    ]);
+
+    $mockGoogleAdsClient          = Mockery::mock(GoogleAdsClient::class);
+    $mockManagerLinkServiceClient = Mockery::mock(CustomerManagerLinkServiceClient::class);
+
+    $mockGoogleAdsClient->shouldReceive('getCustomerManagerLinkServiceClient')
+        ->once()
+        ->andReturn($mockManagerLinkServiceClient);
+
+    $mockManagerLinkServiceClient->shouldReceive('mutateCustomerManagerLink')
+        ->once()
+        ->andReturn(Mockery::mock(MutateCustomerManagerLinkResponse::class));
+
+    // ⭐ USAR O HELPER
+    $this->mockGoogleAdsClientByStructure($mockGoogleAdsClient);
+
+    GoogleClientService::partialMock()
+        ->shouldReceive('getUserAuthData')
+        ->once()
+        ->andReturn(['refresh_token' => 'mock_token']);
+
+    ApiLog::shouldReceive('info')->once();
+
+    $mockService = $this->getMockBuilder(GoogleAdsConnectService::class)
+        ->onlyMethods(['getAccount'])
+        ->getMock();
+
+    $mockService->expects($this->once())
+        ->method('getAccount')
+        ->willReturn($accountEntity);
+
+    // Act
+    $mockService->unlinkAccountAds();
+
+    // Assert
+    $this->assertTrue(true);
+}
+```
+
+---
+
+## Helper Reutilizável
+
+### Checklist para Criar Helper
+
+1. Mapear todas as classes instanciadas pelo método privado
+2. Criar mocks `overload:` na mesma ordem das chamadas
+3. Encadear `->andReturnSelf()` para builders
+4. Retornar o mock final
+5. Documentar o helper
+
+### Localização
+
+Crie helpers como **métodos privados** na própria classe de teste:
+
+```php
+class GoogleAdsConnectServiceTest extends TestCase
+{
+    /**
+     * Helper: Mocka GoogleProjectAuthClient trait structure.
+     */
+    private function mockGoogleAdsClientByStructure(GoogleAdsClient $mock): void
+    {
+        // implementação
+    }
+}
+```
+
+---
+
+## Quando Usar Cada Abordagem
+
+| Cenário | Abordagem |
+|---------|-----------|
+| Método **público** da trait | `getMockBuilder()->onlyMethods()` |
+| Método **protected** da trait | `getMockBuilder()->onlyMethods()` |
+| Método **privado** da trait | `Mockery::mock('overload:')` + Helper |
+| Método usa **SDKs externos** | `Mockery::mock('overload:')` + Helper |
+
+### Mockery `overload` vs `alias`
+
+```php
+// ❌ alias: Só funciona para chamadas estáticas
+Mockery::mock('alias:ClassName')
+
+// ✅ overload: Substitui completamente a classe (inclusive new ClassName())
+Mockery::mock('overload:ClassName')
+```
+
+---
+
+## Troubleshooting
+
+### "Call to private method"
+**Causa**: Tentando mockar método privado diretamente.
+**Solução**: Use mock de estrutura interna com `overload:`.
+
+### "No matching handler found"
+**Causa**: Mock não configurado ou usando `alias` ao invés de `overload`.
+**Solução**: Use `overload:` e verifique se todos os métodos estão mockados.
+
+### Teste faz chamadas reais à API
+**Solução**: Crie mocks com `overload:` para todas as classes instanciadas.
+
+---
+
+## Checklist
+
+### Para Métodos Públicos
+- [ ] Use `getMockBuilder()->onlyMethods(['metodoPublico'])`
+- [ ] Configure `expects()` e `willReturn()`
+
+### Para Métodos Privados
+- [ ] Crie helper `mockTraitStructure()`
+- [ ] Use `overload:` para classes instanciadas
+- [ ] Configure cadeia de retornos
+- [ ] Documente o helper
+
+### Validação Final
+- [ ] Teste não faz chamadas reais
+- [ ] Mocks verificados (`once()`, `twice()`)
+- [ ] Teste rápido (< 1 segundo)

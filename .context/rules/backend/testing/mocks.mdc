@@ -1,0 +1,229 @@
+---
+alwaysApply: false
+---
+# Padrões de Mock
+
+## Facades - Usar partialMock()
+
+```php
+// Para Facades do projeto
+NomeFacade::partialMock()
+    ->shouldReceive('metodo')
+    ->once()
+    ->with($parametro)
+    ->andReturn($retorno);
+
+// Para casos sem partialMock (menos comum)
+NomeFacade::shouldReceive('metodo')
+    ->times(0) // ou ->once(), ->twice()
+    ->andThrow(ExceptionClass::class);
+```
+
+> ℹ️ **Fluxos com traits/SDKs:** quando precisar mockar cadeias internas (métodos privados, builders com `new`), consulte `testing-traits.mdc` para aplicar os helpers com `overload` e manter o código de produção intacto.
+
+## Classes de Serviço - Usar Mockery
+
+```php
+// Para mock completo com métodos protegidos
+$service = Mockery::mock(ServiceClass::class)->makePartial();
+$service->shouldAllowMockingProtectedMethods()
+        ->shouldReceive('metodoProtegido')
+        ->andReturn('valor');
+
+// Para instância normal (sem mock)
+$service = new ServiceClass();
+```
+
+### Quando preferir instâncias reais
+
+- Classes que carregam estado interno ou alteram o comportamento a cada chamada (ex.: `Google\ApiCore\ApiException`, `DateTimeImmutable`) devem ser instanciadas diretamente quando possível.
+- Mocks desses tipos costumam falhar porque métodos como `getMessage()`/`getCode()` são chamados múltiplas vezes ou porque a classe possui lógica interna que o mock não replica.
+- **Regra prática**: se o objeto é basicamente um "value object" ou representa uma exceção do SDK, use o construtor real com dados controlados; deixe os mocks para dependências externas (HTTP clients, repositories, etc.).
+
+### Serviços externos instanciados com `new`
+
+- Quando o código precisa instanciar diretamente SDKs de terceiros (ex.: `ShoppingContent`, `Google_Client`) e o mock via `overload:` não é viável, extraia a criação para um método **protegido** (`makeShoppingContentService`, `buildGoogleClient`, etc.).
+- Nos testes, use `getMockBuilder()->onlyMethods([...])` para sobrescrever esse método protegido e retornar um mock previamente configurado.
+- Documente o novo método na própria classe para deixar claro que ele existe com a finalidade de testabilidade.
+
+## ⚠️ Testando API (Product API)
+
+As classes da API (`ExternalClientService`, Factories) são `final class`, o que **impede o uso de Mockery diretamente**. A solução é usar `$this->app->instance()` para substituir a implementação no container.
+
+### 🚫 Proibição: Imports V1 nos Testes
+
+**NUNCA importe classes da API V1 (`Google\Shopping\Product\*`) nos arquivos de teste.**
+
+```php
+// ❌ PROIBIDO - Import V1 no teste
+use Google\Shopping\Product\Accounts\V1\Homepage;
+use Google\Shopping\Product\Accounts\V1\Client\HomepageServiceClient;
+
+// ✅ CORRETO - Usar mocks genéricos sem tipar com classes V1
+$mockHomepage = Mockery::mock();
+$mockHomepage->shouldReceive('getClaimed')->andReturn(true);
+```
+
+### Problema com Classes Final
+
+```php
+// ❌ NÃO FUNCIONA - Classes API são final
+$mockClient = Mockery::mock(ExternalClientService::class); // Erro!
+```
+
+### Solução: `$this->app->instance()`
+
+```php
+/**
+ * Deve retornar status de claim com sucesso.
+ *
+ * @dataProvider claimStatusDataProvider
+ */
+public function test_getProductClaimStatus_function_and_returns_claim_status(
+    string $productId,
+    bool $websiteClaimed
+): void {
+    // Arrange
+    $expectedResponse = [
+        'websiteClaimed' => $websiteClaimed,
+        'productId'     => $productId
+    ];
+
+    // Mock da resposta Homepage
+    $mockHomepage = Mockery::mock();
+    $mockHomepage->shouldReceive('getClaimed')
+        ->twice()
+        ->andReturn($websiteClaimed);
+
+    // Mock do HomepageClient
+    $mockHomepageClient = Mockery::mock();
+    $mockHomepageClient->shouldReceive('getHomepage')
+        ->once()
+        ->andReturn($mockHomepage);
+
+    // Mock do ExternalClientService
+    $mockExternalClientService = Mockery::mock();
+    $mockExternalClientService->shouldReceive('getHomepageClient')
+        ->once()
+        ->andReturn($mockHomepageClient);
+
+    // ✅ SOLUÇÃO: Substituir no container via Interface
+    $this->app->instance(
+        ExternalClientServiceInterface::class,
+        $mockExternalClientService
+    );
+
+    $this->service->shouldReceive('productId')
+        ->once()
+        ->andReturn($productId);
+
+    ApiLog::shouldReceive('info')
+        ->once()
+        ->with('Project - Product Center API - Get Claim Status - Success', [
+            'productId'     => $productId,
+            'websiteClaimed' => $websiteClaimed
+        ]);
+
+    // Act
+    $response = $this->service->getProductClaimStatus();
+
+    // Assert
+    $this->assertEquals($expectedResponse, $response);
+}
+```
+
+### Padrão para Testes API
+
+1. **Criar mock genérico** (sem especificar classe `final`)
+2. **Configurar expectations** na cadeia de chamadas
+3. **Substituir via Interface** usando `$this->app->instance()`
+
+```php
+// 1. Mock genérico para resposta
+$mockResponse = Mockery::mock();
+$mockResponse->shouldReceive('getField')->andReturn('value');
+
+// 2. Mock genérico para client
+$mockClient = Mockery::mock();
+$mockClient->shouldReceive('methodName')->andReturn($mockResponse);
+
+// 3. Mock genérico para o service
+$mockService = Mockery::mock();
+$mockService->shouldReceive('getClient')->andReturn($mockClient);
+
+// 4. Substituir no container pela Interface
+$this->app->instance(ExternalClientServiceInterface::class, $mockService);
+```
+
+### Por que funciona?
+
+- O Service usa a **Interface** (`ExternalClientServiceInterface`) via Facade
+- O container resolve a Interface para a implementação registrada
+- Com `$this->app->instance()`, substituímos a resolução pelo mock
+- Não tentamos mockar a classe `final` diretamente
+
+## Entidades - Instanciar diretamente
+
+```php
+$entity = new EntityClass([
+    'propriedade1' => 'valor1',
+    'propriedade2' => 'valor2'
+]);
+```
+
+## Expectativas de Chamadas
+
+```php
+->once()                        // Deve ser chamado exatamente uma vez
+->twice()                       // Deve ser chamado exatamente duas vezes
+->times(0)                      // Não deve ser chamado
+->shouldNotReceive('metodo')    // Não deve receber este método
+```
+
+## Verificação de Parâmetros
+
+```php
+->with($param1, $param2)        // Deve ser chamado com estes parâmetros
+->with(['key' => 'value'])      // Para arrays associativos
+```
+
+## Mockando Logs
+
+```php
+ApiLog::shouldReceive('info')
+    ->once();
+
+SysLog::shouldReceive('info')
+    ->once()
+    ->with('Mensagem do log', ['contexto' => 'dados']);
+```
+
+> **Importante:** se o método testado sempre loga antes de lançar exceção (ex.: `handleAdsApiException`), configure os mocks dos logs **antes** de chamar o método. Assim evitamos falsos positivos e garantimos que o teste só falha quando a execução realmente sai do fluxo esperado.
+
+## Padrões de Dados de Teste
+
+### URLs e Dados Fictícios
+
+```php
+$url              = "http://localhost:0000/setup/step-0";
+$expectedResponse = 'http://localhost:0000/test?param=123';
+```
+
+### Arrays de Estado/Payload
+
+```php
+$state = [
+    "shopId"         => "1023694",
+    "name"           => "mockedStoreName",
+    "platformSource" => "external",
+    "websiteUrl"     => "store.commerce.external",
+    "frontUrl"       => $url
+];
+```
+
+### Dados Codificados
+
+```php
+$stateEncoded = base64_encode(json_encode($state));
+$routeEncoded = urlencode("%2Fpublic%2Fproject%2Foauth%2Fcallback");
+```

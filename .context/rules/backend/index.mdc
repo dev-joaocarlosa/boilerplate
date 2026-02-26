@@ -1,0 +1,90 @@
+---
+alwaysApply: true
+---
+
+# Índice de Referências - Laravel API
+
+## 📋 Guia Rápido
+
+### 🎯 Padrões de Código (pasta `patterns/`)
+- **Controllers**: `patterns/controllers.mdc`
+- **Services**: `patterns/services.mdc`
+- **Repositories**: `patterns/repositories.mdc`
+- **Facades/Interfaces**: `patterns/facades-interfaces.mdc`
+- **Imports/Estrutura**: `patterns/imports-structure.mdc`
+- **Índice Padrões**: `patterns/index.mdc` ✅ alwaysApply
+
+### 🔍 Code Review (pasta `code-review/`)
+- **Processo**: `code-review/index.mdc`
+- **Critérios**: `code-review/criteria.mdc`
+- **Exemplos**: `code-review/examples.mdc`
+
+### 🧪 Testes (pasta `testing/`)
+- **Índice**: `testing/index.mdc` ✅ alwaysApply
+- **Execução**: `testing/execution.mdc`
+- **Estrutura**: `testing/structure.mdc`
+- **Padrão AAA**: `testing/aaa-pattern.mdc`
+- **Mocks**: `testing/mocks.mdc`
+- **DataProviders**: `testing/data-providers.mdc`
+- **Feature Tests**: `testing/feature-tests.mdc`
+- **Traits (overload)**: `testing/traits.mdc`
+
+## 🚀 Referências Rápidas
+
+### Estruturas Base
+```php
+// Controller Base: Ver patterns/controllers.mdc
+public function method(): JsonResponse { ... }
+
+// Service Base: Ver patterns/services.mdc
+public function method(): array { ... }
+
+// Repository Base: Ver patterns/repositories.mdc
+public function method(): Collection { ... }
+```
+
+### Regras Críticas
+- ✅ **@inheritDoc** em métodos públicos
+- ✅ **Try/catch** apenas no método público
+- ✅ **PHPDoc em português** sem descrição de parâmetros
+- ✅ **Facades** para acessar Services (não injeção de dependência)
+- 🚫 **Sem comentários** em linhas de código
+- 🚫 **Sem if/else aninhados** - usar early returns
+
+### Namespaces Padrão
+- Controllers: `App\Http\Controllers\[Domain]`
+- Services: `App\Services\[Domain]`
+- Interfaces: `App\Contracts\Services\[Domain]`
+- Facades: `App\Facades\[Domain]`
+- Repositories: `App\Repositories\[Domain]`
+
+## 📚 Documentos Detalhados
+
+### Padrões de Código (`patterns/`)
+| Arquivo | Conteúdo |
+|---------|----------|
+| `index.mdc` | Regras críticas (alwaysApply) |
+| `controllers.mdc` | Controllers e dispatch 204 |
+| `services.mdc` | Services, exceções, logs |
+| `repositories.mdc` | DbRepository, ApiRepository |
+| `facades-interfaces.mdc` | Facades, Interfaces, Providers |
+| `imports-structure.mdc` | Imports e estrutura de pastas |
+
+### Code Review (`code-review/`)
+| Arquivo | Conteúdo |
+|---------|----------|
+| `index.mdc` | Processo de review |
+| `criteria.mdc` | Critérios técnicos |
+| `examples.mdc` | Exemplos de sugestões |
+
+### Testes (`testing/`)
+| Arquivo | Conteúdo |
+|---------|----------|
+| `index.mdc` | Regras críticas de testes (alwaysApply) |
+| `execution.mdc` | Execução via Docker |
+| `structure.mdc` | Estrutura de classes e imports |
+| `aaa-pattern.mdc` | Padrão Arrange-Act-Assert |
+| `mocks.mdc` | Mocks de Facades, Services |
+| `data-providers.mdc` | DataProviders |
+| `feature-tests.mdc` | Testes de Controllers |
+| `traits.mdc` | Testando traits com overload |

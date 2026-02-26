@@ -1,0 +1,110 @@
+# Sincronização de Facades
+
+## Regra
+Quando um método público é adicionado/alterado em um Service, a Facade correspondente DEVE ser atualizada com a anotação `@method static`.
+
+## Estrutura
+
+### Service (Implementação)
+```php
+// app/Services/Google/CampaignService.php
+class CampaignService implements CampaignServiceInterface
+{
+    /**
+     * @inheritDoc
+     */
+    public function create(array $data): CampaignEntity
+    {
+        // implementação
+    }
+
+    /**
+     * @inheritDoc
+     */
+    public function update(int $id, array $data): CampaignEntity
+    {
+        // implementação
+    }
+}
+```
+
+### Interface (Documentação)
+```php
+// app/Contracts/Services/Google/CampaignServiceInterface.php
+interface CampaignServiceInterface
+{
+    /**
+     * Cria uma nova campanha.
+     *
+     * @param array $data Dados da campanha
+     * @return CampaignEntity
+     * @throws ClientException
+     */
+    public function create(array $data): CampaignEntity;
+
+    /**
+     * Atualiza uma campanha existente.
+     *
+     * @param int $id ID da campanha
+     * @param array $data Dados para atualização
+     * @return CampaignEntity
+     * @throws ClientException
+     */
+    public function update(int $id, array $data): CampaignEntity;
+}
+```
+
+### Facade (Anotações @method)
+```php
+// app/Facades/Google/CampaignService.php
+
+/**
+ * Facade para CampaignService.
+ *
+ * @method static CampaignEntity create(array $data)
+ * @method static CampaignEntity update(int $id, array $data)
+ *
+ * @see \App\Services\Google\CampaignService
+ */
+class CampaignService extends Facade
+{
+    protected static function getFacadeAccessor(): string
+    {
+        return CampaignServiceInterface::class;
+    }
+}
+```
+
+## Checklist
+
+Ao adicionar/modificar método público:
+
+- [ ] Método adicionado na Interface com PHPDoc completo
+- [ ] Método implementado no Service com `@inheritDoc`
+- [ ] Anotação `@method static` adicionada na Facade
+- [ ] Tipos de retorno corretos na anotação
+- [ ] Parâmetros com tipos corretos na anotação
+
+## Verificação Automática
+
+O agente `pattern-enforcer` verifica automaticamente se as Facades estão sincronizadas com seus Services.
+
+## Exemplo de Erro Comum
+
+❌ **ERRADO**: Facade sem anotação para novo método
+```php
+/**
+ * @method static CampaignEntity create(array $data)
+ * // Falta @method para update()
+ */
+class CampaignService extends Facade
+```
+
+✅ **CORRETO**: Todas as anotações presentes
+```php
+/**
+ * @method static CampaignEntity create(array $data)
+ * @method static CampaignEntity update(int $id, array $data)
+ */
+class CampaignService extends Facade
+```

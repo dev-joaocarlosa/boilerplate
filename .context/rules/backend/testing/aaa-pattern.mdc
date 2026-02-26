@@ -1,0 +1,157 @@
+---
+alwaysApply: false
+---
+# Padrão AAA (Arrange-Act-Assert)
+
+## Estrutura Obrigatória
+
+Todo método de teste **DEVE** conter, visualmente, os três blocos com comentários.
+
+### Arrange (Preparação)
+
+```php
+// Arrange
+$service = new ServiceClass();
+$parametros = ['key' => 'value'];
+$expectedResponse = 'resultado_esperado';
+
+// Configurar mocks
+Facade::partialMock()
+    ->shouldReceive('metodo')
+    ->once()
+    ->andReturn($retorno);
+```
+
+### Act (Execução)
+
+```php
+// Act
+$response = $service->metodo($parametros);
+```
+
+### Assert (Verificação)
+
+```php
+// Assert
+$this->assertEquals($expectedResponse, $response);
+```
+
+## Regras do AAA
+
+1. Todo método de teste deve conter os três blocos `// Arrange`, `// Act` e `// Assert`
+2. Mesmo quando uma das etapas seja mínima, o comentário deve existir
+3. Os comentários facilitam revisões rápidas e reforçam que nenhum passo ficou implícito
+
+### Caso Especial: Testes de Exceção
+
+Quando um teste valida que nenhuma exceção é lançada:
+
+```php
+public function test_method_does_not_throw_exception()
+{
+    // Arrange
+    $service = new ServiceClass();
+    $data = ['valid' => 'data'];
+
+    // Act
+    $service->process($data);
+
+    // Assert
+    $this->expectNotToPerformAssertions();
+}
+```
+
+## Testes de Métodos Privados/Protegidos
+
+### Usando ReflectionMethod
+
+```php
+// Arrange
+$service = new ServiceClass();
+$privateMethod = new ReflectionMethod($service, 'metodoPrivado');
+$privateMethod->setAccessible(true);
+
+// Act
+$response = $privateMethod->invoke($service, $parametros);
+
+// Assert
+$this->assertEquals($expectedReturn, $response);
+```
+
+> **Dica:** quando o método privado delega a uma cadeia grande de dependências (ex.: traits que constroem clientes Google), prefira criar helpers reutilizáveis para mockar toda a estrutura, como documentado em `testing-traits.mdc`.
+
+## Testes de Exceções
+
+### Expectativa de Exceção
+
+```php
+// Arrange
+$service = new ServiceClass();
+
+// Assert (antes do Act para exceções)
+$this->expectException(ExceptionClass::class);
+
+// Act
+$service->metodo($parametros);
+```
+
+### Mock que lança exceção
+
+```php
+// Arrange
+Facade::shouldReceive('metodo')
+    ->andThrow(new ClientException('Mensagem'));
+
+// Act & Assert implícito pela expectException
+```
+
+## Múltiplos Cenários no Mesmo Teste
+
+Evite quando possível, mas se necessário:
+
+```php
+// Primeiro cenário
+$data = 'cenario1';
+$response = $privateMethod->invoke($service, $data);
+$this->assertEquals(['resultado1'], $response);
+
+// Segundo cenário
+$data = 'cenario2';
+$response = $privateMethod->invoke($service, $data);
+$this->assertEquals(['resultado2'], $response);
+```
+
+## Exemplo Completo
+
+```php
+/**
+ * Testa a função getUrl e espera sucesso.
+ */
+public function test_getUrl_function_and_returns_an_url_for_google_authentication()
+{
+    // Arrange
+    $service          = new GoogleOAuthService();
+    $url              = "http://localhost:0000/setup/step-0";
+    $params           = ['front_url' => $url];
+    $expectedResponse = 'http://localhost:0000/test?google=123';
+
+    AuthorizedUser::partialMock()
+        ->shouldReceive('getSource')
+        ->once()
+        ->andReturn('external');
+
+    GoogleClientService::partialMock()
+        ->shouldReceive('createAuthUrl')
+        ->once()
+        ->andReturn($expectedResponse);
+
+    ApiLog::shouldReceive('info')
+        ->twice();
+
+    // Act
+    $response = $service->getUrl($params);
+
+    // Assert
+    $this->assertEquals($expectedResponse, $response);
+}
+```

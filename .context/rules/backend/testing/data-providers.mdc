@@ -1,0 +1,311 @@
+---
+alwaysApply: false
+---
+# DataProviders
+
+## Quando Usar DataProviders
+
+**✅ USE DataProvider quando:**
+
+1. **Múltiplos Cenários com Mesma Lógica**
+   - Mesmo método testado com diferentes inputs/outputs
+   - Estrutura de Arrange/Act/Assert idêntica
+   - Apenas os dados mudam entre os testes
+
+2. **Validações de Diferentes Tipos**
+   - Testar validações com vários tipos inválidos
+   - Testar status/enums diferentes
+   - Testar diferentes exceções com mesma estrutura
+
+3. **Testes Parametrizados**
+   - Testes de borda (edge cases)
+   - Testes de equivalência
+   - Testes de combinações
+
+**❌ NÃO USE DataProvider quando:**
+
+1. **Lógicas de Mock Diferentes**
+   - Cada cenário precisa de mocks completamente diferentes
+   - Estrutura de Arrange muito diferente entre testes
+
+2. **Assertions Diferentes**
+   - Cada cenário valida coisas diferentes
+   - Quantidade/tipo de assertions varia significativamente
+
+3. **Apenas 1 ou 2 Cenários**
+   - Não vale a pena a complexidade adicional
+   - Melhor manter testes separados e simples
+
+## Estrutura de um DataProvider
+
+```php
+/**
+ * DataProvider para testes de validateFields com dados inválidos.
+ */
+public static function invalidAdsCustomerIdDataProvider(): array
+{
+    return [
+        'adsCustomerId_is_number' => [
+            'data' => ['adsCustomerId' => 12345],
+        ],
+        'adsCustomerId_is_array' => [
+            'data' => ['adsCustomerId' => ['array']],
+        ],
+        'adsCustomerId_is_boolean' => [
+            'data' => ['adsCustomerId' => true],
+        ],
+    ];
+}
+
+/**
+ * Testa a função validateFields com diferentes tipos de dados inválidos.
+ *
+ * @dataProvider invalidAdsCustomerIdDataProvider
+ */
+public function test_throw_validation_exception_with_invalid_adsCustomerId(array $data)
+{
+    // Arrange
+    $validateFieldsMethod = new ReflectionMethod($this->service, 'validateFields');
+    $validateFieldsMethod->setAccessible(true);
+
+    // Assert
+    $this->expectException(ValidationException::class);
+
+    // Act
+    $validateFieldsMethod->invoke($this->service, $data);
+}
+```
+
+## Boas Práticas
+
+### 1. Nomes Descritivos nos Datasets
+
+```php
+// ✅ CORRETO - Nome descritivo
+return [
+    'status_ACTIVE'   => [...],
+    'status_INACTIVE' => [...],
+    'status_PENDING'  => [...],
+];
+
+// ❌ ERRADO - Nomes genéricos
+return [
+    'test1' => [...],
+    'test2' => [...],
+    'test3' => [...],
+];
+```
+
+### 2. Evitar If/Else no Teste
+
+```php
+// ❌ ERRADO - Lógica condicional no teste
+public function test_with_provider($type, $isSpecial)
+{
+    if ($isSpecial) {
+        $mock = $this->createSpecialMock();
+    } else {
+        $mock = $this->createNormalMock();
+    }
+}
+
+// ✅ CORRETO - Passar objetos/mocks prontos
+public static function dataProvider(): array
+{
+    return [
+        'special_case' => [
+            'mock' => Mockery::mock(SpecialClass::class),
+        ],
+        'normal_case' => [
+            'mock' => new NormalClass(),
+        ],
+    ];
+}
+
+public function test_with_provider($mock)
+{
+    // Sem if/else, apenas usa o mock recebido
+    $result = $service->process($mock);
+}
+```
+
+### 3. Preparar Exceções no DataProvider
+
+```php
+// ✅ CORRETO - Exceções criadas no DataProvider
+public static function exceptionDataProvider(): array
+{
+    $apiException = Mockery::mock(ApiException::class);
+    $apiException->shouldReceive('getCode')->andReturn(500);
+    $apiException->shouldReceive('getMessage')->andReturn('Error');
+
+    return [
+        'client_exception' => [
+            'exception'       => new ClientException('Client error'),
+            'expectedMessage' => 'Client error',
+        ],
+        'api_exception' => [
+            'exception'       => $apiException,
+            'expectedMessage' => 'API error',
+        ],
+    ];
+}
+
+public function test_exceptions(\Throwable $exception, string $expectedMessage)
+{
+    // Teste limpo sem condicionais
+}
+```
+
+### 4. Agrupar Cenários Relacionados
+
+```php
+// ✅ CORRETO - DataProvider específico para cada grupo
+public static function invalidDataProvider(): array { /* ... */ }
+public static function validDataProvider(): array { /* ... */ }
+public static function edgeCasesDataProvider(): array { /* ... */ }
+
+// Cada teste usa o provider apropriado
+```
+
+## Exemplos Práticos
+
+### Exemplo 1 — Tipos inválidos
+
+- **Por que usar?** Cobrir múltiplos tipos inválidos com a mesma validação.
+- **Quando usar?** Métodos de validação com regras idênticas mudando apenas o tipo do campo.
+
+```php
+public static function invalidAdsCustomerIdDataProvider(): array
+{
+    return [
+        'adsCustomerId_is_number'  => ['data' => ['adsCustomerId' => 12345]],
+        'adsCustomerId_is_array'   => ['data' => ['adsCustomerId' => ['array']]],
+        'adsCustomerId_is_boolean' => ['data' => ['adsCustomerId' => true]],
+    ];
+}
+```
+
+### Exemplo 2 — Status distintos
+
+- **Por que usar?** Exercitar a mesma chamada cobrindo enums/status diferentes.
+- **Quando usar?** Fluxos condicionados apenas pelo valor do status retornado.
+
+```php
+public static function managerLinkStatusDataProvider(): array
+{
+    return [
+        'status_ACTIVE'   => ['status' => ManagerLinkStatus::ACTIVE],
+        'status_INACTIVE' => ['status' => ManagerLinkStatus::INACTIVE],
+        'status_PENDING'  => ['status' => ManagerLinkStatus::PENDING],
+    ];
+}
+```
+
+### Exemplo 3 — Exceções variadas
+
+- **Por que usar?** Garantir que cada exception esperada tenha assert específico sem duplicar código.
+- **Quando usar?** Handlers que convertem exceções diferentes para respostas/logs distintos.
+
+```php
+public static function unlinkAccountAdsExceptionDataProvider(): array
+{
+    $apiException = Mockery::mock(ApiException::class);
+    $apiException->shouldReceive('getCode')->andReturn(500);
+    $apiException->shouldReceive('getMessage')->andReturn('CUSTOMER_NOT_FOUND');
+
+    return [
+        'client_exception' => [
+            'exception'       => new ClientException('Google client error'),
+            'expectedMessage' => 'Google client error',
+        ],
+        'generic_exception' => [
+            'exception'       => new Exception('Generic error'),
+            'expectedMessage' => 'Ocorreu um erro: Generic error',
+        ],
+        'api_exception' => [
+            'exception'       => $apiException,
+            'expectedMessage' => 'Ocorreu um erro - Concerns Google:',
+        ],
+    ];
+}
+```
+
+## Casos Onde NÃO Usar DataProvider
+
+### Caso 1: Lógicas de Mock Muito Diferentes
+
+```php
+// ❌ NÃO USE DataProvider - Mocks completamente diferentes
+
+// Teste 1: Mock simples
+public function test_getManagerLinkId_returns_link_id()
+{
+    $mockStream = Mockery::mock(GoogleAdsServerStreamDecorator::class);
+    $mockStream->shouldReceive('iterateAllElements')
+        ->once()
+        ->andReturn([$mockGoogleAdsRow]);
+    // ... estrutura complexa
+}
+
+// Teste 2: Mock vazio
+public function test_getManagerLinkId_returns_null()
+{
+    $mockStream = Mockery::mock(GoogleAdsServerStreamDecorator::class);
+    $mockStream->shouldReceive('iterateAllElements')
+        ->once()
+        ->andReturn([]); // Completamente diferente
+}
+
+// ✅ MELHOR: Manter separados pois a estrutura do Arrange é diferente
+```
+
+### Caso 2: Apenas 1-2 Cenários
+
+```php
+// ❌ NÃO USE DataProvider - Overhead desnecessário
+public static function simpleDataProvider(): array
+{
+    return [
+        'success_case' => ['input' => 'value'],
+    ];
+}
+
+// ✅ MELHOR: Teste direto sem DataProvider
+public function test_simple_success_case()
+{
+    $result = $service->process('value');
+    $this->assertEquals('expected', $result);
+}
+```
+
+## Checklist DataProvider
+
+Antes de criar um DataProvider, pergunte:
+
+- [ ] Tenho **3 ou mais** cenários similares?
+- [ ] A estrutura **Arrange/Act/Assert** é idêntica?
+- [ ] Apenas os **dados de entrada/saída** mudam?
+- [ ] Consigo **evitar if/else** no teste?
+- [ ] Os **mocks** são similares entre cenários?
+
+**Se respondeu SIM para todas**: ✅ Use DataProvider
+**Se respondeu NÃO para 2+**: ❌ Mantenha testes separados
+
+## Benefícios
+
+1. ✅ **Menos Duplicação** - Código reutilizado
+2. ✅ **Mais Fácil Adicionar Cenários** - Só adiciona no array
+3. ✅ **Testes Mais Limpos** - Sem código repetitivo
+4. ✅ **Melhor Manutenção** - Um ponto de mudança
+5. ✅ **Nomenclatura Clara** - Datasets nomeados aparecem no output
+
+## Output de Teste com DataProvider
+
+```bash
+✓ throw exception in unlink account ads function with data set "ClientException_from_GoogleClientService"
+✓ throw exception in unlink account ads function with data set "Exception_generic"
+✓ throw exception in unlink account ads function with data set "ApiException_with_code_500"
+```
+
+**Vantagem**: Identifica exatamente qual cenário falhou!

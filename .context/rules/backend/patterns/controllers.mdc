@@ -1,0 +1,187 @@
+---
+alwaysApply: false
+---
+# Controllers Pattern
+
+## Estrutura Base do Controller
+
+```php
+<?php
+
+namespace App\Http\Controllers\[Domain];
+
+use App\Http\Controllers\Controller;
+use App\Facades\[Domain]\{[ServiceName1], [ServiceName2]};
+use App\Facades\Repositories\[Domain]\[RepositoryName];
+use Illuminate\Http\{JsonResponse, Response};
+
+class [DomainName]Controller extends Controller
+{
+    /**
+     * [Descrição do método em português]
+     *
+     * @param [tipo] $param
+     * @return JsonResponse
+     */
+    public function [methodName]([tipo] $param): JsonResponse
+    {
+        return $this->getResponse()->dispatch(function () use ($param) {
+            return [
+                'data' => [ServiceFacade]::[methodName]($param)
+            ];
+        });
+    }
+
+    /**
+     * [Descrição para método que não retorna dados]
+     *
+     * @return JsonResponse
+     */
+    public function [updateMethod](): JsonResponse
+    {
+        return $this->getResponse()->dispatch(function () {
+            [ServiceFacade]::[updateMethod]($this->getPostAttributes());
+        }, Response::HTTP_NO_CONTENT);
+    }
+}
+```
+
+## Exemplo Real
+
+```php
+<?php
+
+namespace App\Http\Controllers\Campaign;
+
+use App\Http\Controllers\Controller;
+use App\Facades\Campaign\{CampaignService, CampaignCreateService, CampaignUpdateService};
+use App\Facades\Repositories\Campaign\CampaignFilterValueRepository;
+use Illuminate\Http\{JsonResponse, Response};
+
+class CampaignController extends Controller
+{
+    /**
+     * Obtém a campanha do usuario da requisição
+     *
+     * @return JsonResponse
+     */
+    public function getCampaign(): JsonResponse
+    {
+        return $this->getResponse()->dispatch(function () {
+            return [
+                'data' => CampaignService::getCampaign()
+            ];
+        });
+    }
+
+    /**
+     * Atualiza campanha
+     *
+     * @return JsonResponse
+     */
+    public function updateCampaign(): JsonResponse
+    {
+        return $this->getResponse()->dispatch(function () {
+            CampaignUpdateService::updateCampaign($this->getPostAttributes());
+        }, Response::HTTP_NO_CONTENT);
+    }
+
+    /**
+     * Salva o orçamento diário selecionado pelo usuário
+     *
+     * @return JsonResponse
+     */
+    public function saveBudget(): JsonResponse
+    {
+        return $this->getResponse()->dispatch(function () {
+            BudgetPersistenceService::saveBudget($this->getPostAttributes());
+        }, Response::HTTP_NO_CONTENT);
+    }
+}
+```
+
+## Padrão 204 No Content (Service sem retorno)
+
+Quando um service tem retorno `void` (não retorna dados), o controller deve usar `Response::HTTP_NO_CONTENT` (204).
+
+### Características
+- ✅ Service retorna `void`
+- ✅ Controller retorna `JsonResponse`
+- ✅ Usa `Response::HTTP_NO_CONTENT` como segundo parâmetro do `dispatch()`
+- ✅ NÃO retorna nada dentro do closure
+- ✅ Usado para operações de persistência/atualização sem necessidade de resposta
+
+### Estrutura
+```php
+/**
+ * [Descrição da ação]
+ *
+ * @return JsonResponse
+ */
+public function [actionMethod](): JsonResponse
+{
+    return $this->getResponse()->dispatch(function () {
+        [ServiceFacade]::[actionMethod]($this->getPostAttributes());
+    }, Response::HTTP_NO_CONTENT);
+}
+```
+
+### Exemplos
+```php
+// Remoção de integração
+public function removeIntegration(): JsonResponse
+{
+    return $this->getResponse()->dispatch(function () {
+        $query = $this->getQueries(['integration_action']);
+        IntegrationRemovalService::removeIntegration($query);
+    }, Response::HTTP_NO_CONTENT);
+}
+
+// Deleção de produto
+public function deleteProduct(string $id): JsonResponse
+{
+    return $this->getResponse()->dispatch(function () use ($id) {
+        ProductService::deleteProduct(
+            array_merge($this->getPostAttributes(), ['id' => $id])
+        );
+    }, Response::HTTP_NO_CONTENT);
+}
+
+// Salvar orçamento
+public function saveBudget(): JsonResponse
+{
+    return $this->getResponse()->dispatch(function () {
+        BudgetPersistenceService::saveBudget($this->getPostAttributes());
+    }, Response::HTTP_NO_CONTENT);
+}
+```
+
+### Service correspondente (void)
+```php
+/**
+ * {@inheritDoc}
+ */
+public function saveBudget(array $budgetData): void
+{
+    $this->validateBudgetData($budgetData);
+    // ... lógica de persistência ...
+    
+    try {
+        CampaignRepository::update($campaign->id, $updateData);
+        Log::info('BudgetPersistence - Budget saved successfully', [...]);
+    } catch (ClientException $clientException) {
+        Log::error('BudgetPersistence - Client error saving budget', [...]);
+        throw new ClientException(ErrorMessageEnum::BUDGET_SAVE_ERROR->value);
+    } catch (Exception $exception) {
+        Log::error('BudgetPersistence - Error saving budget', [...]);
+        throw new Exception(ErrorMessageEnum::GENERIC_ERROR->value);
+    }
+}
+```
+
+## ✅ Padrões Obrigatórios
+
+- ✅ **SEMPRE** usar `Response::HTTP_NO_CONTENT` para services void
+- ✅ **SEMPRE** retornar `JsonResponse` no controller
+- ✅ **NÃO** retornar nada dentro do closure do `dispatch()` para 204
+- 🚫 **NUNCA** usar `return $this->getResponse()->noContent()` dentro do closure

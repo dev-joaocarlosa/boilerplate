@@ -1,0 +1,381 @@
+---
+alwaysApply: false
+---
+# Services Pattern
+
+## ⚠️ REGRA MASTER: Responsabilidade Única
+
+**Cada método DEVE ter apenas UMA responsabilidade. Se um método faz duas coisas, ele DEVE ser quebrado.**
+
+Este é o princípio fundamental (Single Responsibility) que guia toda a estrutura de Services.
+
+```php
+// ❌ ERRADO - Método faz duas coisas: criar campanha E enviar notificação
+public function createCampaignAndNotify(array $data): CampaignEntity
+{
+    $campaign = $this->persistCampaign($data);
+    $this->sendNotification($campaign);  // ❌ Segunda responsabilidade
+    return $campaign;
+}
+
+// ❌ ERRADO - Método faz duas coisas: validar E salvar
+public function validateAndSaveBudget(array $data): BudgetEntity
+{
+    $this->validateBudgetRules($data);   // Responsabilidade 1
+    return $this->persistBudget($data);  // Responsabilidade 2
+}
+
+// ✅ CORRETO - Métodos separados, cada um com sua responsabilidade
+public function createCampaign(array $data): CampaignEntity
+{
+    // Apenas criação de campanha
+}
+
+public function notifyCampaignCreated(CampaignEntity $campaign): void
+{
+    // Apenas notificação
+}
+
+// ✅ CORRETO - Controller orquestra as duas operações
+// No Controller:
+$campaign = CampaignService::createCampaign($data);
+NotificationService::notifyCampaignCreated($campaign);
+```
+
+**Sinais de que um método faz mais de uma coisa:**
+- Nome contém "And" ou "E" (`createAndNotify`, `validateAndSave`)
+- Método chama serviços de domínios diferentes
+- Difícil descrever em uma frase simples o que ele faz
+- Testes precisam validar múltiplos comportamentos não relacionados
+
+**Quem orquestra múltiplas operações?**
+- **Controller**: Orquestra chamadas a diferentes Services
+- **Método Público do Service**: Orquestra apenas métodos privados do MESMO domínio
+
+---
+
+## Estrutura Básica
+
+```php
+class [ServiceName] implements [ServiceName]Interface
+{
+    use [TraitName];
+    private const [CONSTANT] = 'valor';
+
+    /**
+     * @inheritDoc
+     */
+    public function [method]([tipo] $param): array
+    {
+        try {
+            $result = $this->executeLogic($param);
+            
+            Log::info('[ServiceName] - [method] - Success', [
+                'result' => $result,
+            ]);
+            
+            return $result;
+        } catch (ClientException $clientException) {
+            throw $clientException; // Log já feito na origem
+        } catch (Exception $exception) {
+            Log::error('[ServiceName] - [method] - Error', [
+                'exception' => $exception,
+                'param'     => $param,
+            ]);
+            
+            throw new Exception(ErrorMessageEnum::GENERIC_ERROR->value);
+        }
+    }
+}
+```
+
+## Regras de Métodos
+
+### ✅ Métodos Públicos
+- **SEMPRE** usar `@inheritDoc`
+- **ÚNICO** try/catch por método público
+- Responsável por orquestrar chamadas aos métodos privados
+- Logging de sucesso e erro
+
+### ✅ Métodos Privados
+- Descrição **EM PORTUGUÊS**
+- PHPDoc completo com tipos de parâmetros e retorno
+- **SEM** try/catch (deixar para o método público)
+- **SEM** descrição dos parâmetros no PHPDoc
+- **SEMPRE** usar tipagem específica de Entidades
+- 🚫 **NUNCA** usar tipo genérico `object` quando existe uma Entity específica
+- 🚫 **NUNCA** criar métodos que apenas façam proxy para Repositories ou outros Services
+- 🚫 **NUNCA** chamar outros métodos privados (evitar cascata)
+- 🚫 **NUNCA** criar métodos privados para encapsular logs
+
+### ✅ Constantes
+- Valores fixos **SEMPRE** em constantes
+- `private const SHOP_NAME = 'shopname';`
+
+## Logging Pattern
+
+- Usar Log facade (ou ApiLog se disponível)
+- Prefixo '[ServiceName] - [Action]'
+- Logs de sucesso com `info()`
+- Logs de erro com `error()`
+- **SEMPRE** usar Log diretamente onde necessário, **NUNCA** criar métodos para encapsular logs
+
+```php
+Log::info('CampaignService - create - Starting', ['data' => $data]);
+Log::info('CampaignService - create - Success', ['campaign_id' => $id]);
+Log::error('CampaignService - create - Error', ['exception' => $exception]);
+```
+
+### 🚫 Proibição de Métodos de Log
+
+**NUNCA crie métodos privados para encapsular chamadas de log. Use Log diretamente onde precisa.**
+
+```php
+// ❌ ERRADO - Método para encapsular log
+private function logSuccess(string $method, array $data): void
+{
+    Log::info("CampaignService - {$method} - Success", $data);
+}
+
+// ✅ CORRETO - Log usado diretamente
+public function create(array $data): CampaignEntity
+{
+    try {
+        $campaign = $this->persistCampaign($data);
+        
+        Log::info('CampaignService - create - Success', [
+            'campaign_id' => $campaign->id,
+        ]);
+        
+        return $campaign;
+    } catch (Exception $e) {
+        Log::error('CampaignService - create - Error', [
+            'exception' => $e,
+        ]);
+        
+        throw new Exception(ErrorMessageEnum::CAMPAIGN_CREATE_ERROR->value);
+    }
+}
+```
+
+**Motivos:**
+1. **Clareza**: Log visível no contexto onde acontece
+2. **Flexibilidade**: Cada log pode ter contexto específico
+3. **Debugging**: Fácil rastrear origem do log
+4. **Simplicidade**: Menos indireção no código
+
+## Exception Handling
+
+### ClientException (Erros de negócio/validação)
+- ✅ Relançar a mesma exceção (`throw $clientException`)
+- ✅ Mensagem já foi definida com Enum na origem
+- 🚫 **SEM log no catch** - o log já foi feito onde a exceção foi lançada
+
+### Exception genérica (Erros inesperados)
+- 🚫 **NUNCA** expor `$exception->getMessage()` para o usuário
+- ✅ Usar mensagem do Enum
+- ✅ Log completo deve ser registrado com `Log::error()`
+
+```php
+// ✅ CORRETO - ClientException: apenas relança (log já feito na origem)
+} catch (ClientException $clientException) {
+    throw $clientException;
+}
+
+// ✅ CORRETO - Exception genérica: loga e lança com Enum
+} catch (Exception $exception) {
+    Log::error('Service - Error', ['exception' => $exception]);
+    throw new Exception(ErrorMessageEnum::BUDGET_SAVE_ERROR->value);
+}
+
+// ❌ ERRADO - Log duplicado no catch de ClientException
+} catch (ClientException $clientException) {
+    Log::error('...', ['exception' => $clientException]); // ❌ Log duplicado
+    throw $clientException;
+}
+
+// ❌ ERRADO - Expondo detalhes internos
+} catch (Exception $exception) {
+    throw new Exception('Erro: ' . $exception->getMessage()); // ❌ Expõe detalhes
+}
+
+// ❌ ERRADO - Mensagem hardcoded
+} catch (Exception $exception) {
+    throw new Exception('Erro ao salvar orçamento.'); // ❌ Usar Enum
+}
+```
+
+## 🚫 Obrigatoriedade de Enums para Mensagens de Erro
+
+**TODAS as mensagens de erro em `ClientException` e `Exception` DEVEM usar Enum de mensagens.**
+
+```php
+// ❌ ERRADO - Mensagem hardcoded
+throw new ClientException('Nome da campanha é obrigatório');
+throw new Exception('Erro ao processar solicitação.');
+
+// ✅ CORRETO - Usar Enum
+throw new ClientException(ErrorMessageEnum::CAMPAIGN_NAME_REQUIRED->value);
+throw new Exception(ErrorMessageEnum::GENERIC_ERROR->value);
+```
+
+**Motivos:**
+1. **Centralização**: Todas as mensagens em um único lugar
+2. **Consistência**: Mesma mensagem para o mesmo erro
+3. **Manutenibilidade**: Alterações afetam apenas o Enum
+4. **i18n Ready**: Facilita futura internacionalização
+
+## Tipagem Específica de Entidades
+
+```php
+// ✅ CORRETO - Usar Entity específica
+use App\Entities\Campaign\CampaignEntity;
+
+private function shouldUpdateBudget(?CampaignEntity $campaign, int $budget): bool
+{
+    if (is_null($campaign)) {
+        return true;
+    }
+    
+    return $campaign->daily_budget !== $budget;
+}
+
+// ❌ ERRADO - Usar tipo genérico object
+private function shouldUpdateBudget(?object $campaign, int $budget): bool
+{
+    // ...
+}
+```
+
+## 🚫 Proibição de Métodos Proxy
+
+```php
+// ❌ ERRADO - Método que apenas faz proxy
+private function findCampaignById(string $campaignId): ?CampaignEntity
+{
+    return CampaignRepository::findByField('campaign_id', $campaignId);
+}
+
+public function persistBudget(string $campaignId): void
+{
+    $campaign = $this->findCampaignById($campaignId);
+    // ...
+}
+
+// ✅ CORRETO - Chamar diretamente o Repository
+public function persistBudget(string $campaignId): void
+{
+    $campaign = CampaignRepository::findByField('campaign_id', $campaignId);
+    // ...
+}
+```
+
+**Quando um método privado é considerado proxy:**
+- Apenas repassa parâmetros sem transformação ou lógica adicional
+- Não adiciona validação, logging ou tratamento de erro
+- Apenas encapsula uma chamada direta a outro método
+- Não combina múltiplas operações ou adiciona contexto
+
+**Quando um método privado NÃO é proxy (e está correto):**
+- Contém lógica de negócio ou transformação de dados
+- Realiza validações
+- Adiciona contexto ou prepara dados
+
+## 🚫 Proibição de Cascata entre Métodos Privados
+
+O método **público** deve ser o único orquestrador, chamando cada método privado diretamente. Métodos privados **NÃO DEVEM** chamar outros métodos privados.
+
+```php
+// ❌ ERRADO - Cascata de métodos privados
+public function createCampaign(array $data): CampaignEntity
+{
+    return $this->processCreation($data); // Apenas uma chamada
+}
+
+private function processCreation(array $data): CampaignEntity
+{
+    $validated = $this->validateData($data);      // ❌ Privado chamando privado
+    $prepared  = $this->preparePayload($validated); // ❌ Cascata
+    return $this->persistCampaign($prepared);     // ❌ Cascata
+}
+
+// ✅ CORRETO - Método público orquestra todas as chamadas
+public function createCampaign(array $data): CampaignEntity
+{
+    try {
+        $this->validateData($data);                    // ✅ Público chama privado
+        $payload  = $this->preparePayload($data);      // ✅ Público chama privado
+        $campaign = $this->persistCampaign($payload);  // ✅ Público chama privado
+        
+        Log::info('CampaignService - createCampaign - Success', [
+            'campaign_id' => $campaign->id,
+        ]);
+        
+        return $campaign;
+    } catch (ClientException $e) {
+        // ...
+    }
+}
+
+private function validateData(array $data): void
+{
+    // Apenas validação, SEM chamar outros métodos privados
+    if (empty($data['name'])) {
+        throw new ClientException(ErrorMessageEnum::CAMPAIGN_NAME_REQUIRED->value);
+    }
+}
+
+private function preparePayload(array $data): array
+{
+    // Apenas preparação, SEM chamar outros métodos privados
+    return [
+        'name'     => $data['name'],
+        'store_id' => store_id(),
+        'status'   => 'draft',
+    ];
+}
+
+private function persistCampaign(array $payload): CampaignEntity
+{
+    // Apenas persistência, SEM chamar outros métodos privados
+    return CampaignRepository::create($payload);
+}
+```
+
+**Motivos:**
+1. **Rastreabilidade**: Fluxo visível no método público
+2. **Testabilidade**: Fácil identificar o que testar
+3. **Manutenibilidade**: Alterações não afetam cascata
+4. **Debugging**: Stack trace mais limpo
+
+## Alinhamento de Código
+
+```php
+// ✅ Variáveis alinhadas pelo =
+$request = new Request();
+$data    = [];
+$id      = $this->getId();
+
+// ✅ Arrays com chaves alinhadas
+$data = [
+    'batchId'    => $entry['batchId'],
+    'merchantId' => $merchantId,
+    'method'     => $entry['method'],
+];
+```
+
+## Checklist Service
+
+- ✅ Implementa a Interface correspondente
+- ✅ Usa traits específicas do domínio quando necessário
+- ✅ `@inheritDoc` em métodos públicos
+- ✅ Métodos privados com descrição em português
+- ✅ Try/catch apenas no método público
+- ✅ Constantes para valores fixos
+- ✅ Logging com Log facade
+- ✅ Exceptions específicas (ClientException, UnauthorizedException)
+- ✅ Uses agrupados com `{}`
+- 🚫 **SEM comentário na classe**
+- 🚫 **SEM descrição nos parâmetros**
+- 🚫 **SEM comentários em linhas de código**
+- 🚫 **SEM IFs aninhados ou else**

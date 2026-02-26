@@ -1,0 +1,239 @@
+---
+alwaysApply: false
+---
+
+# Pinia Store Pattern
+
+## Setup Store (PREFERIDO)
+
+```ts
+// stores/user.ts
+import { defineStore, acceptHMRUpdate } from 'pinia'
+import { ref, computed } from 'vue'
+import type { User } from '@/types'
+
+export const useUserStore = defineStore('user', () => {
+  // ═══════════════════════════════════════════
+  // STATE
+  // ═══════════════════════════════════════════
+  const user = ref<User | null>(null)
+  const isAuthenticated = ref(false)
+  const isLoading = ref(false)
+  const error = ref<string | null>(null)
+
+  // ═══════════════════════════════════════════
+  // GETTERS (Computed)
+  // ═══════════════════════════════════════════
+  const fullName = computed(() => 
+    user.value 
+      ? `${user.value.firstName} ${user.value.lastName}` 
+      : ''
+  )
+  
+  const initials = computed(() => 
+    user.value 
+      ? `${user.value.firstName[0]}${user.value.lastName[0]}`.toUpperCase()
+      : ''
+  )
+
+  // ═══════════════════════════════════════════
+  // ACTIONS
+  // ═══════════════════════════════════════════
+  async function login(credentials: { email: string; password: string }) {
+    isLoading.value = true
+    error.value = null
+    
+    try {
+      const response = await api.auth.login(credentials)
+      user.value = response.user
+      isAuthenticated.value = true
+    } catch (e) {
+      error.value = (e as Error).message
+      throw e
+    } finally {
+      isLoading.value = false
+    }
+  }
+
+  async function logout() {
+    try {
+      await api.auth.logout()
+    } finally {
+      user.value = null
+      isAuthenticated.value = false
+    }
+  }
+
+  function $reset() {
+    user.value = null
+    isAuthenticated.value = false
+    isLoading.value = false
+    error.value = null
+  }
+
+  // ═══════════════════════════════════════════
+  // RETURN
+  // ═══════════════════════════════════════════
+  return {
+    // State
+    user,
+    isAuthenticated,
+    isLoading,
+    error,
+    // Getters
+    fullName,
+    initials,
+    // Actions
+    login,
+    logout,
+    $reset,
+  }
+})
+
+// ═══════════════════════════════════════════
+// HMR (Hot Module Replacement)
+// ═══════════════════════════════════════════
+if (import.meta.hot) {
+  import.meta.hot.accept(acceptHMRUpdate(useUserStore, import.meta.hot))
+}
+```
+
+## Uso em Componentes
+
+### ✅ CORRETO - storeToRefs
+
+```ts
+import { storeToRefs } from 'pinia'
+import { useUserStore } from '@/stores/user'
+
+const userStore = useUserStore()
+
+// State e Getters - SEMPRE storeToRefs
+const { user, isAuthenticated, fullName } = storeToRefs(userStore)
+
+// Actions - Podem ser desestruturadas diretamente
+const { login, logout } = userStore
+```
+
+### ❌ ERRADO - Perde Reatividade
+
+```ts
+// ❌ NÃO FAÇA ISSO
+const { user, isAuthenticated } = useUserStore() // Perde reatividade!
+
+// ❌ NÃO FAÇA ISSO
+const user = useUserStore().user // Perde reatividade!
+```
+
+## Composição de Stores
+
+```ts
+// stores/cart.ts
+import { defineStore } from 'pinia'
+import { useUserStore } from './user'
+
+export const useCartStore = defineStore('cart', () => {
+  const userStore = useUserStore()
+  const items = ref<CartItem[]>([])
+  
+  // Usar dados de outra store
+  const canCheckout = computed(() => 
+    userStore.isAuthenticated && items.value.length > 0
+  )
+  
+  async function checkout() {
+    if (!userStore.isAuthenticated) {
+      throw new Error('User must be logged in')
+    }
+    // ...
+  }
+  
+  return { items, canCheckout, checkout }
+})
+```
+
+## Stores com Plugins
+
+```ts
+// stores/plugins/persistence.ts
+import type { PiniaPluginContext } from 'pinia'
+
+export function persistencePlugin({ store }: PiniaPluginContext) {
+  // Carregar estado salvo
+  const savedState = localStorage.getItem(`pinia-${store.$id}`)
+  if (savedState) {
+    store.$patch(JSON.parse(savedState))
+  }
+  
+  // Salvar mudanças
+  store.$subscribe((mutation, state) => {
+    localStorage.setItem(`pinia-${store.$id}`, JSON.stringify(state))
+  })
+}
+
+// main.ts
+import { createPinia } from 'pinia'
+import { persistencePlugin } from '@/stores/plugins/persistence'
+
+const pinia = createPinia()
+pinia.use(persistencePlugin)
+```
+
+## Testing
+
+```ts
+// tests/stores/user.spec.ts
+import { describe, it, expect, beforeEach, vi } from 'vitest'
+import { setActivePinia, createPinia } from 'pinia'
+import { useUserStore } from '@/stores/user'
+
+describe('useUserStore', () => {
+  beforeEach(() => {
+    setActivePinia(createPinia())
+  })
+  
+  it('should have initial state', () => {
+    const store = useUserStore()
+    
+    expect(store.user).toBeNull()
+    expect(store.isAuthenticated).toBe(false)
+  })
+  
+  it('should login successfully', async () => {
+    const store = useUserStore()
+    
+    // Mock API
+    vi.spyOn(api.auth, 'login').mockResolvedValue({
+      user: { id: 1, firstName: 'John', lastName: 'Doe' }
+    })
+    
+    await store.login({ email: 'test@test.com', password: '123' })
+    
+    expect(store.isAuthenticated).toBe(true)
+    expect(store.user).not.toBeNull()
+    expect(store.fullName).toBe('John Doe')
+  })
+  
+  it('should handle login error', async () => {
+    const store = useUserStore()
+    
+    vi.spyOn(api.auth, 'login').mockRejectedValue(new Error('Invalid credentials'))
+    
+    await expect(store.login({ email: '', password: '' })).rejects.toThrow()
+    expect(store.error).toBe('Invalid credentials')
+    expect(store.isAuthenticated).toBe(false)
+  })
+})
+```
+
+## Checklist de Store
+
+- [ ] Setup store syntax (function)
+- [ ] State com refs tipados
+- [ ] Getters com computed
+- [ ] Actions async com try/catch
+- [ ] Loading e error states
+- [ ] Método $reset implementado
+- [ ] HMR configurado
+- [ ] storeToRefs nos componentes
+- [ ] Testes unitários

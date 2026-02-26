@@ -1,0 +1,53 @@
+---
+alwaysApply: true
+---
+# Guia de Testes - Project
+
+Documentação de testes organizada por tema.
+
+## 📁 Arquivos de Testes
+
+| Arquivo | Conteúdo |
+|---------|----------|
+| `execution.mdc` | Execução via Docker, comandos |
+| `structure.mdc` | Estrutura de classes, imports, nomenclatura |
+| `aaa-pattern.mdc` | Padrão AAA (Arrange-Act-Assert) |
+| `mocks.mdc` | Mocks de Facades, Services, Entidades, API |
+| `data-providers.mdc` | DataProviders - quando usar, exemplos |
+| `feature-tests.mdc` | Testes de Controllers (Feature Tests) |
+| `traits.mdc` | Testando métodos públicos/privados de Traits |
+
+## ⚠️ REGRAS CRÍTICAS
+
+### 🚫 Proibições
+- **Mocks globais** ou fixtures
+- **Testes dependentes** entre si
+- **Instanciação de Facades** (sempre usar mock)
+- **Hardcoding** de valores sem variáveis explicativas
+- **Imports inline** (`new \ReflectionClass` → importar com `use`)
+- **Classes não importadas** no bloco de `use`
+- **Mockery em classes `final`** da API → usar `$this->app->instance()`
+- **Imports V1 da API** nos testes → usar mocks genéricos sem tipar
+
+### ✅ Padrões Obrigatórios
+- Estrutura **AAA** visível com comentários `// Arrange`, `// Act`, `// Assert`
+- **PHPDoc em português** descrevendo o teste
+- **partialMock()** para Facades
+- **Mockery** para Services
+- **`$this->app->instance(Interface::class, $mock)`** para API (classes `final`)
+- Nomes descritivos: `test_{metodo}_function_and_returns_{resultado}`
+
+## 📋 Checklist Rápido
+
+- [ ] Nome da classe termina com `Test`
+- [ ] Extends `TestCase`
+- [ ] Imports necessários incluídos
+- [ ] PHPDoc em português
+- [ ] Estrutura AAA respeitada
+- [ ] Mocks configurados corretamente
+- [ ] Cenários de sucesso e falha testados
+
+## 🔗 Referências
+
+- `traits.mdc` - Helpers para mockar traits com `overload`
+- `patterns/services.mdc` - Padrões de Services (para entender o que testar)

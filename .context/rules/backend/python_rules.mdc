@@ -1,0 +1,49 @@
+---
+alwaysApply: true
+---
+# Padrões de Código Python - CrewIA Orchestrator
+
+Regras obrigatórias para desenvolvimento no repositório do orquestrador (este projeto).
+
+## Clean Code & Fluxo de Controle
+
+- **Early Returns OBRIGATÓRIOS**: Use Guard Clauses para validar condições de erro no início do método.
+- **PROIBIDO `else` e `elif`**: O fluxo deve ser plano. Se você precisa de um `else`, provavelmente deveria ter retornado ou lançado uma exceção antes.
+- **PROIBIDO `if` aninhado**: Mantenha a indentação no nível mínimo. Se houver lógica complexa, extraia para um método privado.
+
+## Organização de Arquivos (SRP Extremo)
+
+- **Uma Classe por Arquivo**: Cada arquivo `.py` deve conter estritamente UMA única classe.
+- **Localização**: Arquivos `.py` são PROIBIDOS na raiz do projeto (exceto `main.py`). Use a estrutura em `src/`.
+- **Nomenclatura**: O nome do arquivo deve ser o nome da classe em snake_case.
+
+## Métodos e Funções
+
+- **Métodos Cirúrgicos**: Máximo de 20-30 linhas por método. Se exceder, extraia responsabilidades para métodos privados.
+- **Objetivo Único**: Cada método deve fazer EXATAMENTE uma coisa.
+- **Sem Comentários "O Quê"**: O código deve ser autoexplicativo através de nomes de variáveis e métodos. Comentários apenas para o "Porquê" em lógica de negócio complexa.
+
+## Tipagem e Assinaturas
+
+- **Type Hints Obrigatórios**: Todos os parâmetros e retornos devem ser tipados.
+- **Optional**: Use `Optional[X]` da biblioteca `typing` em vez de `X | None`.
+- **Docstrings**: Use docstrings no estilo Google para classes e métodos públicos.
+
+## Gerenciamento de Estado e I/O
+
+- **Async First**: Use as versões assíncronas de chamadas LLM (`ainvoke`) e evite I/O bloqueante no event loop do FastAPI.
+- **Banco de Dados**: Use SQLAlchemy Repositories. Evite manipulação direta de arquivos para estado persistente do sistema.
+- **Isolamento**: Sempre use caminhos absolutos baseados na raiz do projeto ou sandboxes temporárias para operações de escrita.
+
+## Tratamento de Erros
+
+- **Exceções Específicas**: Crie exceções customizadas herdando da base do projeto.
+- **Logging**: Use o logger do projeto com traceback completo em casos de erro.
+
+## Imports
+
+- **Imports Absolutos**: Sempre use caminhos absolutos (ex: `from src.services.ai_service import AIService`).
+- **Ordenação**: 
+  1. Standard Library
+  2. Third-party (CrewAI, LangChain, FastAPI)
+  3. Local apps

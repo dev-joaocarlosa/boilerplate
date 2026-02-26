@@ -1,0 +1,175 @@
+---
+alwaysApply: false
+---
+# Testes de Controllers (Feature Tests)
+
+## Padrões Específicos para Controllers
+
+1. **Localização**: Sempre em `tests/Feature/[Domain]/`
+2. **HTTP Calls**: Usar `$this->withoutMiddleware()->call()`
+3. **Mocks**: Usar `partialMock()` nas Facades (não usar Mockery diretamente)
+4. **Assertions**: Verificar status HTTP e conteúdo JSON
+
+## Estrutura de Teste de Controller
+
+```php
+/**
+ * Testa a função saveBudget e espera sucesso.
+ */
+public function test_saveBudget_function_and_returns_success_response()
+{
+    // Arrange
+    $requestData = [
+        'daily_budget' => 100.50,
+        'origin'       => 'wizard',
+        'type'         => 'recommended'
+    ];
+
+    $expectedServiceResponse = [
+        'success' => true,
+        'data'    => ['budget' => 10050]
+    ];
+
+    $expectedResponse = [
+        'data' => $expectedServiceResponse
+    ];
+
+    BudgetPersistenceService::partialMock()
+        ->shouldReceive('saveBudget')
+        ->once()
+        ->with($requestData)
+        ->andReturn($expectedServiceResponse);
+
+    // Act
+    $response = $this
+        ->withoutMiddleware()
+        ->call('POST', 'api/project/campaign/budget', $requestData);
+
+    // Assert
+    static::assertEquals(200, $response->status());
+    static::assertJsonStringEqualsJsonString(json_encode($expectedResponse), $response->getContent());
+}
+```
+
+## Teste de Exceções em Controllers
+
+```php
+/**
+ * Testa a função quando ocorre ValidationException.
+ */
+public function test_throw_exception_by_validation_exception_in_saveBudget_function()
+{
+    // Arrange
+    $requestData = ['daily_budget' => -10.00];
+
+    BudgetPersistenceService::partialMock()
+        ->shouldReceive('saveBudget')
+        ->once()
+        ->with($requestData)
+        ->andThrow(new ValidationException('The given data was invalid.'));
+
+    // Act
+    $response = $this
+        ->withoutMiddleware()
+        ->call('POST', 'api/project/campaign/budget', $requestData);
+
+    // Assert
+    static::assertEquals(422, $response->status());
+}
+```
+
+## Teste de Controller com 204 No Content
+
+Para endpoints que não retornam conteúdo (void services):
+
+```php
+/**
+ * Testa a função saveBudget e espera sucesso sem conteúdo.
+ */
+public function test_saveBudget_function_and_returns_no_content()
+{
+    // Arrange
+    $requestData = [
+        'daily_budget' => 100.50,
+        'origin'       => 'wizard',
+        'type'         => 'recommended'
+    ];
+
+    BudgetPersistenceService::partialMock()
+        ->shouldReceive('saveBudget')
+        ->once()
+        ->with($requestData)
+        ->andReturnNull();
+
+    // Act
+    $response = $this
+        ->withoutMiddleware()
+        ->call('POST', 'api/project/campaign/budget', $requestData);
+
+    // Assert
+    static::assertEquals(204, $response->status());
+    static::assertEmpty($response->getContent());
+}
+```
+
+**Padrão no Controller:**
+
+```php
+use Illuminate\Http\Response;
+
+public function saveBudget(): JsonResponse
+{
+    return $this->getResponse()->dispatch(function () {
+        $budgetData = $this->getPostAttributes();
+        BudgetPersistenceService::saveBudget($budgetData);
+    }, Response::HTTP_NO_CONTENT);
+}
+```
+
+## Códigos de Status HTTP Comuns
+
+| Código | Descrição | Quando usar |
+|--------|-----------|-------------|
+| `200` | Sucesso com conteúdo | GET, POST com retorno |
+| `201` | Criado | POST que cria recurso |
+| `204` | Sucesso sem conteúdo | POST/PUT/DELETE sem retorno |
+| `400` | ClientException | Erro de negócio |
+| `401` | UnauthorizedException | Não autenticado |
+| `422` | ValidationException | Dados inválidos |
+| `500` | Exception genérica | Erro interno |
+
+## ⚠️ Regra de Segurança - Mensagens de Erro
+
+### ClientException (Erro de Negócio/Validação)
+- ✅ Relançar a exceção (mensagem já definida com Enum na origem)
+- 💡 São erros esperados e controlados pela aplicação
+
+### Exception Genérica (Erro de Sistema)
+- 🚫 **NUNCA** expor `$exception->getMessage()` para o usuário
+- ✅ Usar mensagem do `ErrorMessageEnum`
+- ✅ Log completo deve ser registrado com `ApiLog::error()`
+- 💡 São erros inesperados que podem conter informações sensíveis
+
+**Benefícios:**
+- 🔒 **Segurança**: Não expõe detalhes internos do sistema
+- 🔒 **Privacidade**: Não vaza informações sobre a arquitetura
+- 🔒 **Profissionalismo**: Mensagem amigável para o usuário
+- ✅ **Rastreabilidade**: Erro completo continua logado no ApiLog
+
+```php
+// ✅ CORRETO - ClientException relançada (log já feito na origem)
+} catch (ClientException $clientException) {
+    throw $clientException;
+}
+
+// ✅ CORRETO - Exception genérica com Enum
+} catch (Exception $exception) {
+    ApiLog::error('Project - Service - Error', ['exception' => $exception]);
+    throw new Exception(ErrorMessageEnum::BUDGET_SAVE_ERROR->value);
+}
+
+// ❌ ERRADO - Expondo detalhes internos
+} catch (Exception $exception) {
+    throw new Exception('Erro: ' . $exception->getMessage()); // ❌ NUNCA fazer isso
+}
+```

@@ -1,0 +1,60 @@
+---
+alwaysApply: false
+---
+# Regras Gerais - Laravel API
+
+## Idioma
+**Sempre responder em Português (Brasil)**
+
+## Documentação
+- PHPDoc simplificado: apenas @param, @return, @throws quando necessário
+- Arrays: usar apenas @return array (sem estrutura interna)
+- Facades: @method e @see (sem @throws)
+- Controllers: documentar função e parâmetros (não estrutura JsonResponse)
+- Classes: SEM comentários de classe
+- Código: SEM comentários inline
+
+## Tipagem
+- Tipos explícitos em parâmetros e retornos
+- Preferir tipos específicos (evitar mixed)
+- Usar void/never quando aplicável
+
+## Nomenclatura PSR-4
+- Classes/Interfaces/Traits: PascalCase
+- Métodos/Variáveis/Propriedades: camelCase
+- Constantes: MAIUSCULAS_COM_UNDERSCORE
+- Testes: test_deve_fazer_algo
+
+## Arquitetura
+- Repository Pattern + Service Layer + Facades
+- Interfaces para injeção de dependência
+- Princípios SOLID + Clean Architecture
+- Ver detalhes em: `.cursor/rules/patterns/`
+
+## Estilo PSR-12
+- PSR-12 compliance obrigatório
+- Early returns (sem if/else aninhados)
+- Métodos pequenos e focados
+- Visibilidade explícita (public/protected/private)
+
+## Tratamento de Erros
+- Exceções específicas: ClientException, UnauthorizedException
+- Try/catch apenas no método público do Service
+- Logs com Log facade
+- Mensagens em português
+
+## Testes PHPUnit (APENAS QUANDO SOLICITADO)
+- ⚠️ **NÃO criar testes automaticamente** - apenas quando o usuário solicitar explicitamente
+- Nomenclatura: test_deve_fazer_algo
+- Mockar dependências externas
+- Testar casos de erro e borda
+
+## Segurança
+- Validar/sanitizar inputs/outputs
+- Autenticação JWT + autorização granular
+- Nunca expor dados sensíveis
+- Usar variáveis de ambiente para secrets
+
+## Infraestrutura
+- Docker: PHP 8.2 + MySQL 8.0 + Redis
+- Cache: Redis (TTL apropriado, prefixos, invalidação)

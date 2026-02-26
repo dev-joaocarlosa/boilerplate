@@ -1,0 +1,165 @@
+---
+alwaysApply: false
+---
+# Imports e Estrutura de Diretórios
+
+## Use Statements Pattern
+
+### Para Controllers
+```php
+use App\Http\Controllers\Controller;
+use App\Facades\Google\{
+    GoogleProjectService,
+    GoogleProjectCreateService,
+    GoogleProjectUpdateService,
+    GoogleProjectFilterService
+};
+use App\Facades\Repositories\Project\{
+    CampaignFilterValueRepository,
+    AccountRepository
+};
+use Illuminate\Http\{JsonResponse, Response};
+```
+
+### Para Services
+```php
+use App\Contracts\Services\Google\[ServiceName]Interface;
+use App\Exceptions\{ClientException, UnauthorizedException};
+use App\Facades\Google\Client\ClientService;
+use App\Facades\Logging\ApiLog;
+use App\Facades\Repositories\Project\{
+    AccountRepository,
+    ProductRepository
+};
+use App\Traits\Google\GoogleProjectCampaignUtils;
+use Exception;
+```
+
+## Ordem de Imports
+
+1. PHP nativo/vendor packages
+2. `App\Contracts` (Interfaces)
+3. `App\Entities`
+4. `App\Enums`
+5. `App\Exceptions`
+6. `App\Facades` (agrupadas por domínio)
+7. `App\Http\Controllers\Controller`
+8. `App\Traits`
+9. `Illuminate` classes (agrupadas com `{}`)
+10. Vendor packages (Google, etc.)
+
+## Agrupamento com `{}`
+
+```php
+// ✅ CORRETO - Agrupar classes do mesmo namespace
+use App\Facades\Google\{
+    GoogleProjectService,
+    GoogleProjectCreateService,
+    GoogleProjectUpdateService
+};
+
+// ❌ ERRADO - Imports separados
+use App\Facades\Google\GoogleProjectService;
+use App\Facades\Google\GoogleProjectCreateService;
+use App\Facades\Google\GoogleProjectUpdateService;
+```
+
+## 🚫 Proibição de Imports Inline
+
+**NUNCA use imports inline (fully qualified class name no código). SEMPRE declare no bloco de `use` statements.**
+
+```php
+// ❌ ERRADO - Import inline (fully qualified)
+public function getAccount(): array
+{
+    $exception = new \App\Exceptions\ClientException('Erro');
+    $log = \App\Facades\Logging\ApiLog::info('...');
+    throw new \Exception('Erro genérico');
+}
+
+// ✅ CORRETO - Import declarado no topo do arquivo
+use App\Exceptions\ClientException;
+use App\Facades\Logging\ApiLog;
+use Exception;
+
+public function getAccount(): array
+{
+    $exception = new ClientException('Erro');
+    $log = ApiLog::info('...');
+    throw new Exception('Erro genérico');
+}
+```
+
+### Motivos
+1. **Legibilidade**: Fácil identificar todas as dependências no topo do arquivo
+2. **Consistência**: Padrão único em todo o projeto
+3. **Manutenibilidade**: Alterações de namespace afetam apenas o bloco de imports
+4. **Code Review**: Revisão rápida das dependências utilizadas
+
+## Estrutura de Diretórios
+
+```
+app/
+├── Http/Controllers/[Domain]/
+├── Services/[Domain]/
+├── Contracts/
+│   ├── Services/[Domain]/
+│   └── Repositories/[Domain]/
+├── Facades/
+│   ├── [Domain]/
+│   └── Repositories/[Domain]/
+├── Repositories/[Domain]/
+├── Entities/[Domain]/
+├── Enums/[Domain]/
+└── Exceptions/
+```
+
+## Naming Conventions
+
+| Tipo | Convenção | Exemplo |
+|------|-----------|---------|
+| Controllers | `[Domain]Controller` | `GoogleProjectController`, `ProductCenterController` |
+| Services | `[Name]Service` | `GoogleProjectService`, `PartnerPersistenceService` |
+| Interfaces | `[ServiceName]Interface` | `GoogleProjectServiceInterface` |
+| Facades | Mesmo nome do Service | `GoogleProjectService` (em `App\Facades`) |
+| Repositories | `[Name]Repository` | `ProductRepository`, `AccountRepository` |
+| Entities | `[Name]Entity` | `CampaignEntity`, `AccountEntity` |
+| Enums | `[Name]Enum` | `CampaignStatusEnum`, `ErrorMessageEnum` |
+
+## Domínios Principais
+
+### Google Domain
+- **Ads**: GoogleAdsService, BudgetRecommendationService
+- **ProductCenter**: ProductCenterProductService, ProductCenterWebsiteService
+- **Client**: ClientService, ExternalClientService
+- **Core**: GoogleProjectService, GoogleProjectCreateService, GoogleProjectUpdateService
+
+### Project Domain
+- **Account**: AccountRepository, AccountCampaignRepository
+- **Product**: ProductRepository
+- **Campaign**: CampaignFilterRepository, CampaignFilterValueRepository
+- **Shop**: ShopRepository
+
+### Store Domain
+- **Product**: ProductRepository (API)
+- **Order**: OrderRepository (API)
+- **Customer**: CustomerRepository (API)
+- **Category**: CategoryRepository (API)
+- **Brand**: BrandRepository (API)
+
+### Core Domain
+- **Account**: AccountDetailsService
+- **Partner**: PartnerPersistenceService
+
+## Aplicação por Domínio
+
+```php
+// Interface → Facade → Implementation
+App\Contracts\Services\[Domain]\[Service]Interface
+App\Facades\[Domain]\[Service]
+App\Services\[Domain]\[Service]
+
+// Repository: DbRepository (banco) | ApiRepository (APIs)
+App\Repositories\[Domain]\[Repository] extends DbRepository
+App\Repositories\Store\[Repository] extends ApiRepository
+```

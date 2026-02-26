@@ -1,0 +1,92 @@
+---
+alwaysApply: true
+---
+# Code Patterns - Índice
+
+Padrões de código para projetos Laravel organizados por tema.
+
+## 📁 Arquivos de Padrões
+
+| Arquivo | Conteúdo |
+|---------|----------|
+| `controllers.mdc` | Controllers, dispatch, 204 No Content |
+| `services.mdc` | Services, exceções, logs, métodos privados |
+| `repositories.mdc` | DbRepository, ApiRepository, traits, **performance** |
+| `facades-interfaces.mdc` | Facades, Interfaces, ServiceProvider |
+| `imports-structure.mdc` | Imports, estrutura de pastas, naming |
+
+## 🔴 REGRA MASTER
+
+**Cada método DEVE ter apenas UMA responsabilidade. Se faz duas coisas, DEVE ser quebrado.**
+
+- ❌ `createCampaignAndNotify()` → ✅ `createCampaign()` + `notifyCampaignCreated()`
+- ❌ `validateAndSaveBudget()` → ✅ `validateBudget()` + `saveBudget()`
+- Controller orquestra múltiplos Services; Service orquestra apenas seu domínio
+
+---
+
+## ⚠️ REGRAS CRÍTICAS
+
+### 🚫 Proibições Absolutas
+- **Responsabilidade Múltipla**: SEM métodos que fazem mais de uma coisa
+- **Classes**: SEM comentários de classe
+- **Parâmetros**: SEM descrição no PHPDoc
+- **Código**: SEM comentários inline
+- **Condições**: SEM if/else aninhados - usar early returns
+- **Tipagem**: SEM uso de tipo genérico `object` quando existe Entity específica
+- **Métodos Proxy**: SEM métodos privados que apenas façam proxy para Repositories/Services
+- **Cascata de Privados**: Métodos privados NÃO DEVEM chamar outros métodos privados
+- **Métodos de Log**: SEM métodos privados para encapsular logs - usar Log/ApiLog diretamente
+- **Log Duplicado**: SEM log no catch de `ClientException` - log já feito na origem
+- **Imports Inline**: SEM imports inline (`\App\...`) - SEMPRE usar bloco de `use` statements
+- **Mensagens Hardcoded**: SEM mensagens de erro hardcoded - SEMPRE usar Enums
+- **Queries N+1**: SEM queries dentro de loops - usar Eager Loading (`with`)
+- **SELECT ***: SEM select de todas as colunas - selecionar apenas as necessárias
+- **Locks/Transações**: SEM locks desnecessários ou transações longas
+
+### ✅ Padrões Obrigatórios
+- **@inheritDoc** em métodos públicos de Services
+- **Try/catch** apenas no método público
+- **PHPDoc em português** sem descrição de parâmetros
+- **Facades** para acessar Services e Repositories
+- **Early returns** ao invés de if/else aninhados
+- **Método público orquestra**: O método público deve chamar cada método privado diretamente
+
+## 🏗️ Estrutura de Domínios
+
+### Padrão de Organização
+```
+app/
+├── Contracts/
+│   └── Services/
+│       └── [Domain]/
+│           └── [Service]Interface.php
+├── Facades/
+│   └── [Domain]/
+│       └── [Service].php
+├── Services/
+│   └── [Domain]/
+│       └── [Service].php
+└── Repositories/
+    └── [Domain]/
+        └── [Repository].php
+```
+
+### Exemplos de Domínios
+- **User**: UserService, AuthService, UserRepository
+- **Product**: ProductService, ProductRepository
+- **Order**: OrderService, OrderRepository
+- **Notification**: NotificationService
+
+## 🔗 Referência Rápida
+
+```php
+// Interface → Facade → Implementation
+App\Contracts\Services\[Domain]\[Service]Interface
+App\Facades\[Domain]\[Service]
+App\Services\[Domain]\[Service]
+
+// Repository: DbRepository (banco) | ApiRepository (APIs externas)
+App\Repositories\[Domain]\[Repository] extends DbRepository
+App\Repositories\External\[Repository] extends ApiRepository
+```

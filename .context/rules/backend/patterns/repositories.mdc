@@ -1,0 +1,247 @@
+---
+alwaysApply: false
+---
+# Repositories Pattern
+
+## ⚠️ REGRA CRÍTICA: Performance e Concorrência
+
+**SEMPRE criar consultas otimizadas. EVITAR operações que geram concorrência ou locks.**
+
+### 🚫 Operações a Evitar
+
+```php
+// ❌ ERRADO - SELECT * sem necessidade
+$this->getResource()->get();
+
+// ❌ ERRADO - N+1 queries
+foreach ($campaigns as $campaign) {
+    $campaign->products; // Query para cada campanha
+}
+
+// ❌ ERRADO - Lock desnecessário
+$resource->lockForUpdate()->first();
+
+// ❌ ERRADO - Transação longa
+DB::transaction(function () {
+    // Múltiplas operações pesadas
+    $this->processAllProducts();  // ❌ Lock prolongado
+    $this->updateAllCampaigns();  // ❌ Concorrência
+});
+
+// ❌ ERRADO - COUNT(*) em tabelas grandes
+$resource->count();
+
+// ❌ ERRADO - Carregar todos os registros em memória
+$resource->all()->filter(...);
+```
+
+### ✅ Práticas Recomendadas
+
+```php
+// ✅ CORRETO - Selecionar apenas colunas necessárias
+$resource->select(['id', 'name', 'status'])->get();
+
+// ✅ CORRETO - Eager loading para evitar N+1
+$resource->with(['products', 'filters'])->get();
+
+// ✅ CORRETO - Usar índices (where em colunas indexadas)
+$resource->where('store_id', $storeId)  // Coluna indexada
+    ->where('status', 'active')
+    ->get();
+
+// ✅ CORRETO - Paginação ou chunks para grandes volumes
+$resource->where('status', 'pending')
+    ->chunk(100, function ($records) {
+        // Processa em lotes
+    });
+
+// ✅ CORRETO - Transações curtas e específicas
+DB::transaction(function () use ($data) {
+    return $this->getResource()->create($data);
+});
+
+// ✅ CORRETO - EXISTS ao invés de COUNT para verificação
+$resource->where('store_id', $storeId)->exists();
+
+// ✅ CORRETO - Filtrar no banco, não em memória
+$resource->where('status', 'active')->get();
+```
+
+### Índices e Performance
+
+```php
+// ✅ Sempre usar colunas indexadas no WHERE
+->where('store_id', $storeId)    // ✅ Indexado
+->where('merchant_id', $id)      // ✅ Indexado
+->where('created_at', '>', $date) // ⚠️ Verificar se há índice
+
+// ✅ Ordenação por colunas indexadas
+->orderBy('id', 'desc')          // ✅ PK sempre indexada
+->orderBy('created_at', 'desc')  // ⚠️ Verificar índice
+```
+
+### Quando Usar Transações
+
+| Cenário | Usar Transação? |
+|---------|-----------------|
+| Insert único | ❌ Não necessário |
+| Insert + Update relacionados | ✅ Sim |
+| Múltiplos inserts dependentes | ✅ Sim |
+| Select apenas | ❌ Não necessário |
+| Update em massa | ⚠️ Avaliar volume |
+
+---
+
+## DbRepository (Banco de Dados)
+
+### Estrutura
+```php
+<?php
+
+namespace App\Repositories\[Domain];
+
+use App\Contracts\Repositories\[Domain]\[RepositoryName]Interface;
+use App\Entities\[Domain]\[EntityName];
+use App\Models\[Domain]\[ModelName];
+use App\Repositories\DbRepository;
+use Illuminate\Support\Collection;
+
+class [RepositoryName] extends DbRepository implements [RepositoryName]Interface
+{
+    /**
+     * {@inheritDoc}
+     */
+    public function getResourceClass(): string
+    {
+        return [ModelName]::class;
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    public function getEntityClass(): string
+    {
+        return [EntityName]::class;
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    public function [methodName]([tipo] $param): Collection
+    {
+        return $this->getResource()
+            ->execute(function ([ModelName] $resource) use ($param) {
+                return $resource->newQuery()
+                    ->where('field', $param)
+                    ->get();
+            })->toCollection();
+    }
+}
+```
+
+## ApiRepository (APIs Externas)
+
+### Estrutura
+```php
+<?php
+
+namespace App\Repositories\Store;
+
+use App\Contracts\Repositories\Store\[RepositoryName]Interface;
+use App\Entities\Store\[EntityName];
+use App\Repositories\Api\ApiRepository;
+use App\Repositories\Concerns\ApiClient\Query\{CanFind, CanPaginate, CanStore, CanUpdate, CanDelete};
+
+class [RepositoryName] extends ApiRepository implements [RepositoryName]Interface
+{
+    use CanPaginate;
+    use CanFind;
+    use CanStore;
+    use CanUpdate;
+    use CanDelete;
+
+    /**
+     * {@inheritDoc}
+     */
+    protected function getEntityClass(): string
+    {
+        return [EntityName]::class;
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    protected function getBindingName(): string
+    {
+        return 'resource_name';
+    }
+}
+```
+
+## Repository Facade
+
+### Estrutura
+```php
+<?php
+
+namespace App\Facades\Repositories\[Domain];
+
+use App\Contracts\Repositories\[Domain]\[RepositoryName]Interface;
+use Illuminate\Support\Facades\Facade;
+
+/**
+ * @method static array [methodName]([tipo] $param)
+ *
+ * @see [RepositoryName]Interface
+ */
+class [RepositoryName] extends Facade
+{
+    /**
+     * Get the registered name of the component.
+     *
+     * @return string
+     */
+    protected static function getFacadeAccessor()
+    {
+        return [RepositoryName]Interface::class;
+    }
+}
+```
+
+## Traits Disponíveis
+
+| Trait | Função |
+|-------|--------|
+| `CanFind` | Métodos de busca (`find`, `findByField`) |
+| `CanPaginate` | Paginação de resultados |
+| `CanStore` | Criação de registros |
+| `CanUpdate` | Atualização de registros |
+| `CanDelete` | Remoção de registros |
+
+## Checklist Repository
+
+### Estrutura
+- ✅ Implementa a Interface correspondente
+- ✅ Estende `DbRepository` (banco) ou `ApiRepository` (APIs)
+- ✅ `{@inheritDoc}` em métodos públicos
+- ✅ Traits específicos para funcionalidades
+- ✅ Métodos específicos para cada domínio
+- ✅ **SEMPRE** verificar métodos existentes antes de criar novos
+- ✅ Buscar por métodos genéricos como `findByField`, `findShopsWithPlatforms`
+- ✅ Reutilizar traits existentes
+
+### Performance
+- ✅ Selecionar apenas colunas necessárias (`select`)
+- ✅ Usar Eager Loading para evitar N+1 (`with`)
+- ✅ Filtrar no banco, não em memória
+- ✅ Usar `exists()` ao invés de `count()` para verificações
+- ✅ Usar `chunk()` para grandes volumes
+- ✅ WHERE em colunas indexadas
+
+### Proibições
+- 🚫 **NUNCA** duplicar lógica que já existe em outro método
+- 🚫 **NUNCA** usar `SELECT *` sem necessidade
+- 🚫 **NUNCA** criar queries N+1
+- 🚫 **NUNCA** usar locks desnecessários (`lockForUpdate`)
+- 🚫 **NUNCA** transações longas com múltiplas operações pesadas
+- 🚫 **NUNCA** carregar todos os registros em memória para filtrar

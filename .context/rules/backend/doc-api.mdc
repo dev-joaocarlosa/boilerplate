@@ -1,0 +1,481 @@
+---
+description: Documentar endpoints REST a partir dos controllers e services, seguindo o padrão de documentação do Bruno API Client.
+globs:
+alwaysApply: false
+---
+
+# Documentação de APIs - Bruno API Client
+
+## Padrões e Regras para Documentação de Endpoints REST
+
+### Documentar Endpoint da API com Bruno
+
+Documentar endpoints REST a partir dos controllers e services, seguindo o padrão de documentação do Bruno API Client.
+
+#### 1. Identificação do Endpoint
+
+- O nome do endpoint deve ser extraído do método do controller responsável pela rota.
+- O caminho da rota deve ser identificado a partir do arquivo de rotas ou do PHPDoc do controller.
+
+#### 2. Estrutura do Arquivo `.bru`
+
+- O documento deve conter:
+  - **meta**: nome do endpoint, tipo (http), sequência.
+  - **request**: método HTTP, URL, parâmetros de query/path/body, headers, autenticação.
+  - **docs**: descrição, parâmetros, exemplos de resposta de sucesso e erro.
+
+#### 3. Estrutura do `docs`
+
+**1. Descrição Geral (`## Descrição 📝`)**
+
+- Deve ser baseada no PHPDoc do método do controller.
+- Se não houver, usar o nome do método e uma breve descrição do que ele faz, baseada no nome do service chamado.
+- Forneça um resumo claro e conciso do que o endpoint faz. Explique seu propósito, o fluxo em que se encaixa e qualquer contexto de negócio relevante.
+- A documentação não deve passar de 100 caracteres por linha.
+
+**2. Parâmetros da Requisição**
+
+**`## Query Parameters 🔍`**
+
+- **OBRIGATÓRIO**: Analise PROFUNDAMENTE o controller e service para identificar TODOS os query parameters possíveis.
+- **Processo de Análise Completa**:
+  1. **Controller**: Examine `$this->getRequest()->all()`, `$this->getQueries()`, `$this->getRequestFilters()`
+  2. **Service**: Analise todos os parâmetros recebidos e como são processados
+  3. **Validação**: Verifique regras de validação (Validator, FormRequest)
+  4. **Código de Filtragem**: Examine lógica de filtros, ordenação e paginação
+  5. **Chamadas de API Externa**: Se houver, verifique parâmetros passados para APIs externas (Google, etc.)
+- **NUNCA** documente apenas os parâmetros óbvios - busque por filtros aninhados, ordenação, paginação, etc.
+- Incluir tipo, obrigatoriedade, descrição detalhada e exemplo real.
+
+| Nome do parâmetro | Tipo   | Obrigatório | Descrição                                         | Exemplo |
+| ----------------- | ------ | ----------- | ------------------------------------------------- | ------- |
+| `platform_source` | string | Sim         | A plataforma de origem da loja (`external` ou `bagy`) | `external`  |
+
+**`## Body Parameters 📄`**
+
+- Se o endpoint espera um corpo (JSON, form-data), documente cada campo na mesma estrutura de tabela. Se não houver corpo, indique claramente: `Nenhum parâmetro é esperado no body.`
+
+**3. Cabeçalhos (`##Configuração de Body, Headers e Autenticação por Método HTTP`)**
+
+##### Regras de Configuração:
+
+1. **Body**:
+
+   - `none`: GET, DELETE
+   - `json`: POST, PUT, PATCH (dados JSON)
+   - `multipartForm`: Upload de arquivos
+   - `form`: Dados de formulário URL-encoded
+
+2. **Headers Obrigatórios**:
+
+   - `Accept: application/json`: Sempre incluir
+   - `Content-Type: application/json`: Apenas para body JSON
+   - Headers customizados conforme necessidade da API
+
+3. **Autenticação**:
+   - `bearer`: Rotas protegidas (maioria das rotas da API) - SEMPRE usar explicitamente
+   - `none`: Rotas públicas (/public/\*, /info, alguns endpoints específicos)
+   - `inherit`: Evitar - sempre especificar explicitamente `auth:bearer`
+
+### Orientações por Método HTTP
+
+**GET**: Foco em documentar os `Query Parameters` para filtros, paginação e ordenação. A resposta de sucesso (`200 OK`) deve mostrar a estrutura do(s) recurso(s) retornado(s).
+
+**POST**: Foco em documentar os `Body Parameters` necessários para a criação do recurso. A resposta de sucesso ideal é `201 Created` (com o recurso criado no corpo) ou `204 No Content` se nenhuma informação for retornada.
+
+**PUT / PATCH**: Foco nos `Body Parameters` que podem ser atualizados. A resposta de sucesso é geralmente `200 OK` (com o recurso atualizado) ou `204 No Content`.
+
+**DELETE**: Geralmente não possui corpo. A resposta de sucesso é `204 No Content`."
+
+**Para todo endpoint documentado, deve criar uma request de exemplo funcional que:**
+
+1. **Siga rigorosamente todas as regras deste documento**
+2. **Configure corretamente**:
+   - Body conforme o método HTTP
+   - Headers obrigatórios
+   - Autenticação apropriada
+   - Parâmetros de query/path necessários
+
+**4. Respostas Esperadas (`## Respostas Esperadas`)**
+
+**`#### Resposta de Sucesso ✅ (HTTP xxx)`**
+
+- **OBRIGATÓRIO**: Realize uma **ANÁLISE PROFUNDA** da estrutura de resposta de sucesso.
+- **Processo de Análise Completa de Estrutura de Resposta**:
+  1. **Controller**: Examine o retorno do método e como os dados são estruturados
+  2. **ResponseFactory**: Verifique como `$this->getResponse()->dispatch()` formata a resposta
+  3. **Services**: Analise TODOS os services chamados e suas estruturas de retorno
+  4. **Repositories**: Examine as entidades retornadas e seus campos
+  5. **Entities**: Verifique as propriedades das entidades (`App\Entities\*`)
+  6. **Transformações**: Analise como os dados são transformados antes do retorno
+  7. **Meta Information**: Verifique se há informações de meta (versão, paginação, etc.)
+  8. **Facades**: Examine os facades utilizados e suas estruturas de retorno
+
+- **NUNCA** invente estruturas de resposta - sempre baseie-se no código real.
+- **Estrutura Padrão da API** (baseada no ResponseFactory):
+  - **Dados simples**: `{ "data": { ... } }`
+  - **Com meta**: `{ "data": { ... }, "meta": { "version": "1.0.0" } }`
+  - **Com paginação**: `{ "data": [...], "paging": { ... }, "meta": { ... } }`
+  - **Sem conteúdo**: HTTP 204 No Content (body vazio)
+
+- **Processo de Validação da Estrutura**:
+  1. **Teste Real**: Sempre que possível, teste o endpoint em ambiente de desenvolvimento
+  2. **Análise de Código**: Se não puder testar, analise profundamente o controller/service
+  3. **Verificação de Entidades**: Examine as entidades para entender todos os campos disponíveis
+  4. **Dados Fictícios Realistas**: Use dados fictícios que representem a estrutura real
+
+**`#### Resposta de Erro ❌ (HTTP xxx)`**
+
+- **OBRIGATÓRIO**: Realize uma **ANÁLISE PROFUNDA** de todos os possíveis erros do endpoint.
+- **Processo de Análise Completa de Erros**:
+  1. **Middlewares**: Examine TODOS os middlewares aplicados à rota (`api.restrict`, `LoadPlatform`, `AuthenticatesJwt`, etc.)
+  2. **Controller**: Analise todas as exceções que podem ser lançadas no método
+  3. **Services**: Examine todos os services chamados e suas possíveis exceções
+  4. **Repositories**: Verifique erros de banco de dados e APIs externas
+  5. **Validações**: Analise FormRequests, Validators e regras de validação
+  6. **Handler de Exceções**: Verifique `app/Exceptions/Handler.php` para entender como erros são transformados
+  7. **Exceções Customizadas**: Examine todas as exceções customizadas (`ClientException`, `UnauthorizedException`, `ValidationException`, etc.)
+
+- **NUNCA** documente erros inventados - busque por TODOS os cenários de erro possíveis.
+
+- **Estrutura de Documentação de Erros**:
+```json
+#### Respostas de Erro ❌
+
+**HTTP 401 Unauthorized - Token inválido:**
+{
+  "message": "Unauthorized access"
+}
+
+**HTTP 404 Not Found - Recurso não encontrado:**
+{
+  "message": "Not found"
+}
+
+**HTTP 422 Unprocessable Entity - Dados inválidos:**
+{
+  "message": "The given data was invalid.",
+  "errors": {
+    "campo": ["Mensagem específica do campo"]
+  }
+}
+```
+
+#### 4. Exemplo de Template
+
+````yaml
+meta {
+  name: <Nome do Endpoint>
+  type: http
+  seq: <Sequência>
+}
+
+<http_method> {
+  url: <URL do endpoint>
+  body: <body ou none>
+  auth: <tipo de auth>
+}
+
+params:query {
+  <param>: <exemplo>
+}
+
+params:body {
+  <campo>: <exemplo>
+}
+
+headers {
+  Accept: application/json
+  <outros headers>: <exemplo>
+}
+
+auth:bearer {
+  token: <exemplo>
+}
+
+docs {
+  ## Descrição 📝
+
+  <Descrição do endpoint, baseada no PHPDoc do controller/service>
+
+  ## Query Parameters 🔍
+
+  | Nome do parâmetro  | Tipo   | Obrigatório | Descrição | Exemplo |
+  | --- | --- | ----- | --- | ---- |
+  | ...                | ...    | ...         | ...       | ...     |
+
+  ## Body Parameters
+
+  | Nome do campo  | Tipo   | Obrigatório | Descrição | Exemplo |
+  | --- | --- | ----- | --- | ---- |
+  | ...           | ...    | ...         | ...       | ...     |
+
+  ## Headers
+
+  | Nome do header | Obrigatório | Descrição | Exemplo |
+  | --- | --- | --- | --- |
+  | ... | ... | ... | ... |
+
+  ## Respostas Esperadas
+
+  #### Resposta de Sucesso ✅ (HTTP 200 OK)
+  ```json
+  <Exemplo extraído do retorno do controller/service, caso não haja retorno claro, busque na model/entity os campos ideias de retorno>
+````
+
+#### Resposta de Erro ❌ (HTTP 4xx/5xx)
+
+```json
+<Exemplo extraído das validações/exceções>
+```
+
+}
+
+```
+
+#### 5. Análise Profunda de Arquivos e Referências
+
+**OBRIGATÓRIO**: Para cada endpoint documentado, realize uma **ANÁLISE COMPLETA** de todos os arquivos relacionados:
+
+**5.1. Mapeamento Completo de Arquivos**:
+1. **Rota**: Identifique a rota em `routes/api.php` ou `routes/public.php`
+2. **Controller**: Examine o controller responsável e TODOS os seus métodos
+3. **Middlewares**: Analise TODOS os middlewares aplicados à rota
+4. **Services**: Examine TODOS os services chamados (diretos e indiretos)
+5. **Repositories**: Analise TODOS os repositories utilizados
+6. **Entities**: Examine TODAS as entidades retornadas ou manipuladas
+7. **Facades**: Analise TODOS os facades utilizados
+8. **Exceptions**: Examine TODAS as exceções customizadas que podem ser lançadas
+9. **Validations**: Analise FormRequests, Validators e regras de validação
+10. **External APIs**: Se houver, examine integrações com APIs externas (Google, etc.)
+
+**5.2. Rastreamento de Dependências**:
+- **Siga TODAS as chamadas**: Desde o controller até o último service/repository
+- **Examine imports**: Verifique todos os `use` statements para entender dependências
+- **Analise herança**: Examine classes pai e traits utilizados
+- **Verifique interfaces**: Analise contratos implementados
+
+**5.3. Análise de Fluxo de Dados**:
+- **Input**: Como os dados entram (query, body, headers)
+- **Processing**: Como os dados são processados (validação, transformação)
+- **Output**: Como os dados saem (estrutura de resposta, códigos HTTP)
+- **Error Handling**: Como erros são tratados em cada etapa
+
+**5.4. Verificação de Consistência**:
+- **Compare com endpoints similares**: Verifique se a documentação está consistente
+- **Valide estruturas**: Confirme se as estruturas de resposta estão corretas
+- **Teste cenários**: Valide diferentes cenários de sucesso e erro
+
+#### 6. Convenções
+
+- Utilize os PHPDocs dos métodos públicos para preencher a descrição e os parâmetros.
+- Se o método utilizar validação, documente as regras de validação.
+- Se o método lançar exceções, documente os possíveis erros e mensagens.
+- Para endpoints POST (ou outros que aceitam body), sempre detalhe os campos do body e headers necessários.
+- **SEMPRE** realize a análise profunda descrita na seção 5 antes de finalizar a documentação.
+
+---
+
+A documentação deve ser gerada conforme o exemplo do arquivo Bruno, preenchendo os campos com base nos PHPDocs, validações, headers e retornos do service/controller.
+
+## Estrutura e Organização do Bruno
+
+### Estrutura de Pastas
+
+A estrutura de pastas no Bruno deve espelhar a organização das rotas do Laravel:
+
+```
+
+.bruno/
+├── Auth/ # Autenticação (/user)
+├── Store/ # Recursos da loja
+│ ├── Products/ # Produtos e variantes (/products, /products/variants)
+│ ├── Customers/ # Clientes (/customers)
+│ ├── Orders/ # Pedidos (/orders)
+│ ├── Categories/ # Categorias (/categories)
+│ └── Brands/ # Marcas (/brands)
+├── Info/ # Informações gerais (/info)
+├── Project/ # Rotas principais do Project (/project)
+│ ├── Kafka/ # Controle do Kafka (/enableKafka, /disableKafka)
+│ ├── OAuth/ # Autenticação OAuth (/oauth)
+│ ├── Account Details/ # Detalhes da conta (/account-details)
+│ ├── Integration/ # Remoção de integração (/remove-integration)
+│ ├── Assets/ # Assets de texto e imagem (/assets)
+│ ├── Budget Recommendations/ # Recomendações de orçamento (/budget-recommendations)
+│ ├── Campaign/ # Campanhas (/campaign)
+│ ├── Reports/ # Relatórios (/reports)
+│ ├── Product Center/ # Centro do comerciante (/product-center)
+│ │ └── Policy Settings/ # Configurações de política (/policy-settings)
+│ ├── Ads/ # Google Ads (/ads)
+│ ├── Rollout/ # Rollout (/rollout)
+│ └── Partners/ # Parceiros (/partners)
+└── environments/ # Configurações de ambiente
+
+````
+
+### Mapeamento Rotas Laravel → Bruno
+
+| Rota Laravel | Pasta Bruno | Observações |
+|--------------|-------------|-------------|
+.bruno/
+├── Auth/                      # Autenticação
+├── Auth Backoffice/           # Autenticação backoffice
+├── Auth Normalizador Bagy/    # OAuth Normalizador
+├── Store/                     # 🟢 Dados da plataforma (ApiRepository)
+│   ├── Products/
+│   │   └── Variants/
+│   ├── Brands/
+│   ├── Categories/
+│   ├── Customers/
+│   └── Orders/
+├── Core/                      # 🟢 Funcionalidades core Project
+│   ├── Account Details
+│   ├── Remove Integration
+│   └── Partners/              # ⚠️ MOVER de Project/Partners
+├── Project/                      # 🟢 Integrações Google
+│   ├── Ads/
+│   ├── Assets/
+│   ├── Budget Recommendations/
+│   ├── Campaign/
+│   ├── Kafka/
+│   ├── Product Center/
+│   ├── OAuth/
+│   ├── Reports/
+│   └── Rollout/
+├── Info/                      # 🟢 Informações da loja
+└── Public/                    # 🟢 Endpoints públicos
+
+### Nomenclatura de Arquivos
+
+1. **Nomes descritivos**: Use nomes claros que identifiquem a funcionalidade
+   - ✅ `Get Campaign.bru`, `Create Campaign.bru`, `Update Campaign.bru`
+   - ❌ `campaign.bru`, `camp.bru`
+
+2. **Métodos HTTP**: Inclua o método HTTP no nome quando necessário para clareza
+   - ✅ `GET User.bru`, `POST Create Campaign.bru`, `PUT Update Campaign.bru`
+   - ✅ `DELETE Remove Integration.bru`
+
+3. **Rotas públicas**: Adicione o prefixo `[PUBLIC]` para rotas que não requerem autenticação
+   - ✅ `[PUBLIC] OAuth Callback.bru`
+   - ✅ `[PUBLIC] Send Events.bru`
+
+4. **Arquivo de pasta**: Cada diretório deve ter um `folder.bru` para configuração da pasta
+  - Adicione uma lista de rotas e subrotas que fazem parte do folder com uma breve descrição do seu objetivo
+
+**Exemplo de documentação no folder.bru:**
+```
+docs {
+  ## Rotas e Subrotas
+
+  ### GET /api/project/campaign -  Lista campanhas Project ativas da loja
+}
+````
+
+### Estrutura do Arquivo .bru
+
+#### Metadados
+
+```
+
+meta {
+name: Nome da Requisição
+type: http
+seq: 1
+}
+
+```
+
+#### Definição da Requisição
+
+```
+
+post {
+url: {{host}}/api/project/endpoint?platform_source={{platform_slug}}
+body: json
+auth: bearer
+}
+
+```
+
+#### Variáveis e Autenticação
+
+```
+
+params:query {
+platform_source: {{platform_slug}}
+}
+
+headers {
+Accept: application/json
+}
+
+auth:bearer {
+token: {{access_token}}
+}
+
+```
+
+**Arquivo: `.bruno/environments/meu_ambiente.bru`**
+
+```
+
+vars {
+host: https://api-project.external.net.br
+platform_slug: external
+}
+vars:secret [
+access_token,
+password,
+user_token
+]
+
+```
+
+### Checklist Obrigatório
+
+Antes de fazer commit com nova rota:
+
+- [ ] **ANÁLISE PROFUNDA COMPLETA** realizada conforme seção 5
+- [ ] **TODOS os middlewares** analisados e documentados
+- [ ] **TODOS os services/repositories** examinados
+- [ ] **TODAS as exceções possíveis** identificadas e documentadas
+- [ ] **Estrutura de resposta REAL** baseada no código (não inventada)
+- [ ] **Mensagens de erro PADRONIZADAS** conforme aplicação
+- [ ] Arquivo `.bru` criado na pasta correta seguindo mapeamento
+- [ ] Documentação completa no bloco `docs`
+- [ ] Variáveis de ambiente utilizadas (`{{host}}`, `{{access_token}}`)
+- [ ] Autenticação configurada adequadamente (`bearer`, `none`, `inherit`)
+- [ ] Sequência (`seq`) definida sem conflitos
+- [ ] Nomenclatura seguindo padrões estabelecidos
+- [ ] Exemplo de request/response testado e funcional
+- [ ] Método HTTP incluído no nome quando necessário para clareza
+
+## ⚠️ IMPORTÂNCIA CRÍTICA DA ANÁLISE PROFUNDA
+
+### Por que a Análise Profunda é Obrigatória?
+
+1. **Consistência**: Garante que todos os endpoints sigam o mesmo padrão de documentação
+2. **Precisão**: Evita documentação incorreta que pode confundir desenvolvedores
+3. **Completude**: Assegura que todos os cenários possíveis sejam documentados
+4. **Manutenibilidade**: Facilita futuras atualizações e correções
+5. **Experiência do Desenvolvedor**: Proporciona documentação confiável e útil
+
+### Consequências de NÃO Fazer Análise Profunda:
+
+❌ **Documentação Incorreta**: Estruturas de resposta inventadas
+❌ **Erros Não Documentados**: Cenários de erro não cobertos
+❌ **Inconsistência**: Padrões diferentes entre endpoints
+❌ **Confusão**: Desenvolvedores recebem informações incorretas
+❌ **Retrabalho**: Necessidade de corrigir documentação posteriormente
+
+### ✅ Resultado da Análise Profunda:
+
+✅ **Documentação 100% Precisa**: Baseada no código real
+✅ **Cobertura Completa**: Todos os cenários documentados
+✅ **Padrões Consistentes**: Mensagens de erro padronizadas
+✅ **Experiência Excelente**: Desenvolvedores confiam na documentação
+✅ **Manutenção Fácil**: Documentação sempre atualizada
+
+---
+
+**LEMBRE-SE**: A análise profunda não é opcional - é um **REQUISITO OBRIGATÓRIO** para garantir a qualidade e precisão da documentação da API.

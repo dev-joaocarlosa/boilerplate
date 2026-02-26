@@ -1,0 +1,63 @@
+{
+  "name": "Laravel + Ralph Boilerplate",
+  "dockerComposeFile": "docker-compose.yml",
+  "service": "app",
+  "workspaceFolder": "/workspace",
+  
+  "remoteUser": "root",
+  
+  "features": {
+    "ghcr.io/devcontainers/features/docker-outside-of-docker:1": {
+      "version": "latest",
+      "enableNonRootDocker": "true",
+      "moby": "true"
+    },
+    "ghcr.io/devcontainers/features/node:1": {
+      "version": "20",
+      "pnpmVersion": "latest",
+      "yarnVersion": "latest"
+    },
+    "ghcr.io/devcontainers/features/git:1": {
+      "version": "latest",
+      "ppa": "false"
+    }
+  },
+  
+  "onCreateCommand": "mkdir -p /workspace/.context/skills /workspace/.context/rules /workspace/.context/prompts /workspace/.context/agents",
+  "postCreateCommand": "bash .devcontainer/setup.sh",
+  
+  "runArgs": [
+    "--init"
+  ],
+  
+  "customizations": {
+    "vscode": {
+      "settings": {
+        "php.suggest.basic": false,
+        "editor.formatOnSave": true
+      },
+      "extensions": [
+        "bmewburn.vscode-intelephense-client",
+        "esbenp.prettier-vscode",
+        "dbaeumer.vscode-eslint",
+        "bradlc.vscode-tailwindcss",
+        "amiralizadeh9480.laravel-extra-intellisense",
+        "antfu.vite"
+      ]
+    }
+  },
+
+  "remoteEnv": {
+    "ANTHROPIC_BASE_URL": "https://api.minimax.io/anthropic",
+    "API_TIMEOUT_MS": "3000000",
+    "CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC": "1",
+    "ANTHROPIC_MODEL": "MiniMax-M2.5",
+    "ANTHROPIC_SMALL_FAST_MODEL": "MiniMax-M2.5",
+    "ANTHROPIC_DEFAULT_SONNET_MODEL": "MiniMax-M2.5",
+    "ANTHROPIC_DEFAULT_OPUS_MODEL": "MiniMax-M2.5",
+    "ANTHROPIC_DEFAULT_HAIKU_MODEL": "MiniMax-M2.5",
+    "DB_CONNECTION": "mysql",
+    "DB_HOST": "mysql",
+    "DB_PORT": "3306"
+  }
+}

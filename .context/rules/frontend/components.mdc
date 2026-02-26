@@ -1,0 +1,280 @@
+---
+alwaysApply: false
+---
+
+# Vue 3 Components Pattern
+
+## Estrutura Padrão de Componente
+
+```vue
+<script setup lang="ts">
+import { ref, computed, watch, onMounted } from 'vue'
+import type { User } from '@/types'
+
+// ═══════════════════════════════════════════
+// PROPS
+// ═══════════════════════════════════════════
+const props = defineProps<{
+  user: User
+  editable?: boolean
+}>()
+
+// ═══════════════════════════════════════════
+// EMITS
+// ═══════════════════════════════════════════
+const emit = defineEmits<{
+  save: [user: User]
+  delete: [id: number]
+  cancel: []
+}>()
+
+// ═══════════════════════════════════════════
+// V-MODEL
+// ═══════════════════════════════════════════
+const model = defineModel<string>({ default: '' })
+
+// ═══════════════════════════════════════════
+// STATE
+// ═══════════════════════════════════════════
+const isLoading = ref(false)
+const error = ref<string | null>(null)
+
+// ═══════════════════════════════════════════
+// COMPUTED
+// ═══════════════════════════════════════════
+const fullName = computed(() => 
+  `${props.user.firstName} ${props.user.lastName}`
+)
+
+const isValid = computed(() => 
+  model.value.length > 0 && !error.value
+)
+
+// ═══════════════════════════════════════════
+// WATCHERS
+// ═══════════════════════════════════════════
+watch(() => props.user.id, async (newId) => {
+  await fetchUserData(newId)
+}, { immediate: true })
+
+// ═══════════════════════════════════════════
+// LIFECYCLE
+// ═══════════════════════════════════════════
+onMounted(() => {
+  // Inicialização
+})
+
+// ═══════════════════════════════════════════
+// METHODS
+// ═══════════════════════════════════════════
+async function handleSave() {
+  isLoading.value = true
+  error.value = null
+  
+  try {
+    await saveUser(props.user)
+    emit('save', props.user)
+  } catch (e) {
+    error.value = (e as Error).message
+  } finally {
+    isLoading.value = false
+  }
+}
+
+function handleCancel() {
+  emit('cancel')
+}
+</script>
+
+<template>
+  <div class="user-card">
+    <h2>{{ fullName }}</h2>
+    
+    <input 
+      v-model="model" 
+      :disabled="!editable || isLoading"
+      placeholder="Digite algo..."
+    />
+    
+    <p v-if="error" class="error">{{ error }}</p>
+    
+    <div class="actions">
+      <button 
+        @click="handleSave" 
+        :disabled="!isValid || isLoading"
+      >
+        {{ isLoading ? 'Salvando...' : 'Salvar' }}
+      </button>
+      
+      <button @click="handleCancel" :disabled="isLoading">
+        Cancelar
+      </button>
+    </div>
+  </div>
+</template>
+
+<style scoped>
+.user-card {
+  padding: 1rem;
+  border: 1px solid #eee;
+  border-radius: 8px;
+}
+
+.error {
+  color: red;
+  font-size: 0.875rem;
+}
+
+.actions {
+  display: flex;
+  gap: 0.5rem;
+  margin-top: 1rem;
+}
+</style>
+```
+
+## Regras de Props
+
+### Tipagem Correta
+
+```ts
+// ✅ CORRETO - Type-based declaration
+const props = defineProps<{
+  title: string
+  count?: number
+  items: string[]
+  user: User | null
+}>()
+
+// ✅ Com defaults
+const props = withDefaults(defineProps<{
+  title: string
+  count?: number
+}>(), {
+  count: 0
+})
+
+// ❌ EVITAR - Runtime declaration
+const props = defineProps({
+  title: String,
+  count: Number
+})
+```
+
+### Props Complexas
+
+```ts
+// Para objetos/arrays mutáveis, usar factory function
+const props = withDefaults(defineProps<{
+  items?: string[]
+  config?: Record<string, unknown>
+}>(), {
+  items: () => [],
+  config: () => ({})
+})
+```
+
+## Regras de Emits
+
+### Tipagem Correta
+
+```ts
+// ✅ CORRETO - Type-based com payload
+const emit = defineEmits<{
+  change: [value: string]
+  submit: [data: FormData]
+  'update:modelValue': [value: string]
+}>()
+
+// Uso
+emit('change', 'new value')
+emit('submit', formData)
+```
+
+### Validação de Eventos
+
+```ts
+// Para validação adicional
+const emit = defineEmits({
+  submit: (data: FormData) => {
+    return data.has('email') // Retorna boolean
+  }
+})
+```
+
+## Regras de v-model
+
+### Básico
+
+```ts
+// Componente filho
+const model = defineModel<string>()
+
+// Uso no pai
+<ChildComponent v-model="parentValue" />
+```
+
+### Múltiplos v-model
+
+```ts
+// Componente filho
+const title = defineModel<string>('title')
+const content = defineModel<string>('content')
+
+// Uso no pai
+<Editor v-model:title="docTitle" v-model:content="docContent" />
+```
+
+### Com Modifiers
+
+```ts
+const [model, modifiers] = defineModel<string>()
+
+if (modifiers.uppercase) {
+  // Aplicar modificador
+}
+```
+
+## Slots
+
+### Tipagem de Slots
+
+```ts
+defineSlots<{
+  default: (props: { item: Item }) => void
+  header: () => void
+  footer: (props: { count: number }) => void
+}>()
+```
+
+### Verificar se Slot foi Fornecido
+
+```ts
+import { useSlots } from 'vue'
+
+const slots = useSlots()
+const hasHeader = computed(() => !!slots.header)
+```
+
+## Expose
+
+```ts
+// Expor métodos/valores para o pai
+defineExpose({
+  focus: () => inputRef.value?.focus(),
+  reset: () => { /* ... */ }
+})
+```
+
+## Checklist de Componente
+
+- [ ] `<script setup lang="ts">`
+- [ ] Props tipadas com generics
+- [ ] Emits tipados com generics
+- [ ] v-model com defineModel
+- [ ] Slots tipados se usados
+- [ ] Refs tipados
+- [ ] Métodos async com try/catch
+- [ ] Loading states
+- [ ] Error handling
+- [ ] Styles scoped
