@@ -4,9 +4,12 @@ Esta base utiliza React, Inertia, Laravel e Tailwind, operando num ambiente DevC
 
 Ao construir novas features ou resolver problemas, obedeça estritamente à seguinte hierarquia arquitetural de sub-agentes e padrões, localizados na sua pasta `.context`:
 
-1.  **Regras (`/.context/rules`)**: Consulte ESTES arquivos de regras MESTRAS de stack antes de gerar qualquer código base (.context/rules/laravel.md, .context/rules/react.md). O NÃO cumprimento dessas regras é passível de falha nas pipelines.
-2.  **Agentes (`/.context/agents`)**: Dependendo da _natureza_ da issue sendo processada iterativamente por você, carregue a personalidade correta (ex: engenheiro de banco, especialista frontend, especialista DevOps) mapeada dentro do diretório `/agents`.
-3.  **Habilidades (`/.context/skills`)**: Em breve você possuirá scripts/skills personalizados mapeados aqui para executar funções de domínio complexas que vão além das primitivas de shell habituais.
+1.  **Regras (`/.context/rules`)**: Consulte ESTES arquivos de regras MESTRAS de stack antes de gerar qualquer código base (.context/rules/laravel.md (ou backend.md), .context/rules/frontend.md). O NÃO cumprimento dessas regras é passível de falha nas pipelines.
+2.  **Agentes (`/.context/agents`)**: *VOCÊ É UM ROTEADOR*. Dependendo da issue/PRD em execução, assuma estritamente uma destas personalidades:
+    - Se a tarefa for criar um PRD: Incorpore `.context/agents/product_owner.md`.
+    - Se a tarefa for codificar o Backend/Banco: Incorpore `.context/agents/backend_dev.md` e siga os passos dele à risca.
+    - Se a tarefa for UI/React/Shadcn: Incorpore `.context/agents/frontend_dev.md` e siga os passos dele à risca.
+3.  **Habilidades (`/.context/skills`)**: Você armazenará scripts úteis, lições aprendidas e relatórios de falhas anteriores para cada stack correspondente (ex: `.context/skills/frontend/README.md`) para não cometer os mesmos erros na próxima iteração.
 
 ## Integração Ralph
 Esta base executa o loop do Ralph de forma autônoma (arquivos em `scripts/ralph/`).
