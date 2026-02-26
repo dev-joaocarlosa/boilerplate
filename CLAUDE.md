@@ -19,3 +19,11 @@ Se o usuário solicitar a **criação de um novo projeto**, inicialização de u
 Sua diretriz de uso e única ferramenta válida para isso é o script executável na raiz:
 - Rode no terminal: `./new-project.sh <nome-do-novo-projeto>`
 - Este script clonará o boilerplate limpo em uma pasta irmã, excluirá históricos do git nativos, fará um build de repositório privado via Github CLI (gh) sob o org `dev-joaocarlosa` e commitará automaticamente. Comunique-se com o usuário sobre o resultado final.
+
+## Gestão de PRDs (Product Requirements)
+A organização dos requisitos segue um padrão rígido para automação:
+1.  **Pasta de Saída**: Todos os PRDs devem ser salvos em `/tasks/` com o padrão `prd-[id]-[slug].md`.
+2.  **Agente Responsável**: O `product_owner` (definido em `.context/agents/product_owner.md`).
+3.  **Template**: Utilize SEMPRE o template localizado em `.context/prompts/write_prd.md`.
+4.  **Fluxo**: Quando o usuário pedir para "Planejar uma feature" ou "Criar um PRD", assuma a persona do `product_owner`, use o template e salve o resultado em `/tasks/`.
+
