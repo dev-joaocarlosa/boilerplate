@@ -2,14 +2,11 @@
 Você está rodando no modo **Boilerplate Root**. 
 Esta base utiliza React, Inertia, Laravel e Tailwind, operando num ambiente DevContainer restrito (Docker in Docker).
 
-Ao construir novas features ou resolver problemas, obedeça estritamente à seguinte hierarquia arquitetural de sub-agentes e padrões, localizados na sua pasta `.context`:
+Ao construir novas features ou resolver problemas, obedeça estritamente à seguinte hierarquia arquitetural e de padrões, localizados na sua pasta `.context` e nos seus plugins nativos `.claude`:
 
-1.  **Regras (`/.context/rules`)**: Consulte ESTES arquivos de regras MESTRAS de stack antes de gerar qualquer código base (.context/rules/laravel.md (ou backend.md), .context/rules/frontend.md). O NÃO cumprimento dessas regras é passível de falha nas pipelines.
-2.  **Agentes (`/.context/agents`)**: *VOCÊ É UM ROTEADOR*. Dependendo da issue/PRD em execução, assuma estritamente uma destas personalidades:
-    - Se a tarefa for criar um PRD: Incorpore `.context/agents/product_owner.md`.
-    - Se a tarefa for codificar o Backend/Banco: Incorpore `.context/agents/backend_dev.md` e siga os passos dele à risca.
-    - Se a tarefa for UI/React/Shadcn: Incorpore `.context/agents/frontend_dev.md` e siga os passos dele à risca.
-3.  **Habilidades (`/.context/skills`)**: Você armazenará scripts úteis, lições aprendidas e relatórios de falhas anteriores para cada stack correspondente (ex: `.context/skills/frontend/README.md`) para não cometer os mesmos erros na próxima iteração.
+1.  **Regras (`/.context/rules`)**: Consulte ESTES arquivos de regras MESTRAS de stack antes de gerar qualquer código base (.context/rules/backend.md, .context/rules/frontend.md).
+2.  **Agentes (`/.claude/agents`)**: *VOCÊ possui Sub-Agentes Nativos*. Dependendo da issue/PRD em execução, você DEVE engatilhar a criação do subagente especializado (ex: `backend-dev`, `frontend-dev`, `product-owner`) para fazer o trabalho paralelo/delegado sem estourar o seu contexto.
+3.  **Habilidades (`/.claude/skills`) e (`/.context/skills`)**: Você utiliza nativamente as Skills (ex: `/write-prd`) para garantir a geração padronizada de arquivos. Armazene também aprendizados nas pastas de `.context/skills` para iterar sua própria base de conhecimento.
 
 ## Integração Ralph
 Esta base executa o loop do Ralph de forma autônoma (arquivos em `scripts/ralph/`).
@@ -26,7 +23,7 @@ Sua diretriz de uso e única ferramenta válida para isso é o script executáve
 ## Gestão de PRDs (Product Requirements)
 A organização dos requisitos segue um padrão rígido para automação:
 1.  **Pasta de Saída**: Todos os PRDs devem ser salvos em `/tasks/` com o padrão `prd-[id]-[slug].md`.
-2.  **Agente Responsável**: O `product_owner` (definido em `.context/agents/product_owner.md`).
-3.  **Template**: Utilize SEMPRE o template localizado em `.context/prompts/write_prd.md`.
-4.  **Fluxo**: Quando o usuário pedir para "Planejar uma feature" ou "Criar um PRD", assuma a persona do `product_owner`, use o template e salve o resultado em `/tasks/`.
+2.  **Agente Responsável**: O `product-owner` (chamado via Subagente).
+3.  **Template**: Utilize SEMPRE a skill nativa `/write-prd`.
+4.  **Fluxo**: Quando o usuário pedir para "Planejar uma feature" ou "Criar um PRD", delegue a criação para o agente `product-owner` e cobre a entrega do PRD preenchido em formato markdown em `/tasks/`.
 

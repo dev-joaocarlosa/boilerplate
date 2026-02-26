@@ -1,22 +1,13 @@
 ---
-name: write_prd
-agent: product_owner
-variables:
-  - idea
-  - project_name
-  - prd_id
+name: write-prd
+description: Formato base obrigatório a ser seguido para qualquer Product Requirement Document ser persistido em código e entendível pelos bots de engenharia. Utilizada tipicamente pelo product-owner agent.
+user-invocable: true
+allowed-tools: Write
 ---
-
-# Task
-
-Crie um PRD completo para: {{idea}}
-
-Projeto: {{project_name}}
-ID: {{prd_id}}
 
 # Output Formato (OBRIGATÓRIO)
 
-Copie e preencha este template EXATAMENTE:
+Para qualquer PRD escrito, copie e preencha este template EXATAMENTE como no bloco markdown a seguir:
 
 ```markdown
 ---
