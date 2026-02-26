@@ -13,3 +13,9 @@ Esta base executa o loop do Ralph de forma autônoma (arquivos em `scripts/ralph
 **Não tente sair do loop atualizado sem antes**:
 1. Rodar testes em tudo que fez.
 2. Atualizar este mesmo arquivo (`CLAUDE.md`), ou arquivos na pasta `.context/` sempre que um novo aprendizado for obtido durante a iteração. A retroalimentação é essencial.
+
+## Derivando Novos Projetos (Scaffolding Automático)
+Se o usuário solicitar a **criação de um novo projeto**, inicialização de um novo app, ou instruir algo como "derive um projeto a partir deste boilerplate", **NÃO** crie as pastas manualmente e não clone nada na mão.
+Sua diretriz de uso e única ferramenta válida para isso é o script executável na raiz:
+- Rode no terminal: `./new-project.sh <nome-do-novo-projeto>`
+- Este script clonará o boilerplate limpo em uma pasta irmã, excluirá históricos do git nativos, fará um build de repositório privado via Github CLI (gh) sob o org `dev-joaocarlosa` e commitará automaticamente. Comunique-se com o usuário sobre o resultado final.
