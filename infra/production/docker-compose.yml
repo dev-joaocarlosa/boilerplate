@@ -1,0 +1,46 @@
+version: '3.8'
+
+services:
+  # Backend API + SSR (Laravel / React frontend consolidado)
+  app:
+    build:
+      context: .
+      dockerfile: infra/production/Dockerfile
+    container_name: boilerplate_app
+    restart: unless-stopped
+    working_dir: /var/www
+    volumes:
+      # Em produção real evite bing mounts da raiz, mantenha apenas pastas de storage dinâmicas.
+      - .\storage\app\public:/var/www/storage/app/public
+    env_file:
+      - .env
+    environment:
+      - APP_ENV=production
+      - SKIP_WORKERS=true
+    ports:
+      - "80:80"
+    networks:
+      - external_net
+  # Se houver Workers separados para processar Filas do Laravel
+  # worker:
+  #   build:
+  #     context: .
+  #     dockerfile: infra/production/Dockerfile
+  #   container_name: boilerplate_worker
+  #   restart: unless-stopped
+  #   working_dir: /var/www
+  #   command: /bin/bash /var/www/start-workers.sh
+  #   env_file:
+  #     - .env
+  #   environment:
+  #     - APP_ENV=production
+  #     - SKIP_WORKERS=false
+  #   networks:
+  #     - external_net
+
+networks:
+  external_net:
+    driver: bridge
+    # Se desejar acoplar esse container diretamente ao Easypanel nativo (ex: app Traefik proxy)
+    # external: true
+    # name: easypanel

@@ -1,7 +1,8 @@
-FROM mcr.microsoft.com/devcontainers/php:1-8.3-bullseye
+FROM mcr.microsoft.com/devcontainers/php:1-8.4-bookworm
 
-# Install MariaDB client and other required tools
-RUN apt-get update && export DEBIAN_FRONTEND=noninteractive \
+# Fix potential GPG issues with stale repositories in the base image
+RUN rm -f /etc/apt/sources.list.d/yarn.list \
+    && apt-get update && export DEBIAN_FRONTEND=noninteractive \
     && apt-get -y install --no-install-recommends \
     mariadb-client \
     git \
