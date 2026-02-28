@@ -18,6 +18,7 @@ docker compose -f .devcontainer/docker-compose.yml up -d
 
 echo "✅ Containers iniciados com sucesso!"
 echo "🌍 Aplicação: http://boilerplate.localhost"
+echo "🔌 API:       http://api.boilerplate.localhost"
 echo "📊 phpMyAdmin: http://pma.boilerplate.localhost"
 echo ""
 echo "💡 Dica: Para ver os logs, rode: docker compose -f .devcontainer/docker-compose.yml logs -f"

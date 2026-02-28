@@ -42,6 +42,7 @@ git commit -m "Initial commit from Boilerplate (Laravel + React + Shadcn + Ralph
 echo "🏷️ Personalizando nomes e URLs do projeto..."
 # Substitui todas as ocorrências de boilerplate (incluindo em hosts do Traefik) pelo nome do projeto
 sed -i '' "s/boilerplate/${PROJECT_NAME}/g" .devcontainer/docker-compose.yml
+sed -i '' "s/boilerplate/${PROJECT_NAME}/g" start.sh
 
 # 5. Create remote repository using GitHub CLI (gh)
 echo "☁️  Criando repositório na organização ${ORG_NAME} via Github CLI..."

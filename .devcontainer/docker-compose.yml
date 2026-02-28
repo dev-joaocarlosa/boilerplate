@@ -17,6 +17,7 @@ services:
     labels:
       - "traefik.enable=true"
       - "traefik.http.routers.boilerplate.rule=Host(`boilerplate.localhost`)"
+      - "traefik.http.routers.boilerplate-api.rule=Host(`api.boilerplate.localhost`)"
       - "traefik.http.services.boilerplate.loadbalancer.server.port=8000"
       - "traefik.docker.network=local-infra-net"
 
