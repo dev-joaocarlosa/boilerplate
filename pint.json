@@ -1,0 +1,16 @@
+{
+    "preset": "psr12",
+    "rules": {
+        "binary_operator_spaces": {
+            "operators": {
+                "=": "align",
+                "=>": "align"
+            }
+        },
+        "single_import_per_statement": false,
+        "ordered_imports": {
+            "sort_algorithm": "alpha"
+        },
+        "group_import": true
+    }
+}
