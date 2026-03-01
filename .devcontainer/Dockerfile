@@ -8,6 +8,7 @@ RUN rm -f /etc/apt/sources.list.d/yarn.list \
     git \
     jq \
     unzip \
+    sudo \
     && curl -fsSL https://deb.nodesource.com/setup_22.x | bash - \
     && apt-get install -y nodejs \
     && apt-get clean -y && rm -rf /var/lib/apt/lists/* \
@@ -16,13 +17,17 @@ RUN rm -f /etc/apt/sources.list.d/yarn.list \
 # Install Composer
 RUN curl -sS https://getcomposer.org/installer | php -- --install-dir=/usr/local/bin --filename=composer
 
-# Install global Claude Code & AMP CLI
+# Install global Claude Code & AMP CLI (as root so binary is in /usr/local/bin)
 RUN npm install -g @anthropic-ai/claude-code \
     && curl -fsSL https://ampcode.com/install.sh | bash
 
-# Create Claude Code configuration directory and settings for root
-RUN mkdir -p /root/.claude \
-    && echo '{\n  "claudeCode": {\n    "selectedModel": "MiniMax-M2.5",\n    "theme": "dark"\n  }\n}' > /root/.claude/settings.json
+# Create a non-root user 'dev' for Claude Code (which refuses --bypassPermissions as root)
+RUN useradd -m -s /bin/bash dev \
+    && echo "dev ALL=(ALL) NOPASSWD:ALL" >> /etc/sudoers \
+    && mkdir -p /home/dev/.claude \
+    && echo '{"theme":"dark","claudeCode":{"selectedModel":"MiniMax-M2.5"}}' > /home/dev/.claude/settings.json \
+    && chown -R dev:dev /home/dev/.claude
 
-# Set user to root (since it's dangerous mode for Ralph)
+# Root stays as the main container user (for php-fpm, artisan etc.)
+# Claude agents (ralf.sh, claude.sh) switch to 'dev' before running claude CLI
 USER root

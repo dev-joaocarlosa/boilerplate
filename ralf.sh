@@ -65,9 +65,24 @@ export ANTHROPIC_SMALL_FAST_MODEL="MiniMax-M2.5"
 export CLAUDE_DANGEROUSLY_SKIP_PERMISSIONS=1
 
 # Dispara o Ralf com saída visível em tempo real no terminal
-claude -p "\$(cat /tmp/ralf_prompt.txt)" \
-    --permission-mode bypassPermissions \
-    --verbose
+# (Claude Code recusa bypassPermissions como root - executa como usuário 'dev')
+export RALF_TOKEN="\$ANTHROPIC_AUTH_TOKEN"
+export RALF_BASE_URL="\$ANTHROPIC_BASE_URL"
+export RALF_MODEL="\$ANTHROPIC_MODEL"
+
+su dev -c "
+    export ANTHROPIC_AUTH_TOKEN='\$RALF_TOKEN'
+    export ANTHROPIC_BASE_URL='\$RALF_BASE_URL'
+    export ANTHROPIC_MODEL='\$RALF_MODEL'
+    export ANTHROPIC_SMALL_FAST_MODEL='\$RALF_MODEL'
+    export API_TIMEOUT_MS='3000000'
+    export CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC='1'
+    export CLAUDE_DANGEROUSLY_SKIP_PERMISSIONS=1
+    claude -p \"\$(cat /tmp/ralf_prompt.txt)\" \
+        --permission-mode bypassPermissions \
+        --verbose \
+        --add-dir /workspace
+"
 ENDOFSCRIPT
 
 # 3. Copia ambos os arquivos pro container
