@@ -27,10 +27,10 @@ docker exec -it "${PROJECT_NAME}-app" bash -c "
     # 1. Carrega as Variáveis de Segurança
     if [ -f .env ]; then
         TOKEN=\$(grep -E '^ANTHROPIC_API_KEY=' .env | cut -d '=' -f2- | tr -d ' \\r\\n\"'\\'')
-        export ANTHROPIC_API_KEY=\"\$TOKEN\"
+        export ANTHROPIC_AUTH_TOKEN=\"\$TOKEN\"
     fi
     
-    if [ -z \"\$ANTHROPIC_API_KEY\" ]; then
+    if [ -z \"\$ANTHROPIC_AUTH_TOKEN\" ]; then
         echo '❌ ERRO: ANTHROPIC_API_KEY vazia no .env'
         exit 1
     fi

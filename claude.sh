@@ -13,10 +13,10 @@ docker exec -it "${PROJECT_NAME}-app" bash -c '
     
     if [ -f .env ]; then
         TOKEN=$(grep -E "^ANTHROPIC_API_KEY=" .env | cut -d "=" -f2- | tr -d " \r\n\"'\''")
-        export ANTHROPIC_API_KEY="$TOKEN"
+        export ANTHROPIC_AUTH_TOKEN="$TOKEN"
     fi
     
-    if [ -z "$ANTHROPIC_API_KEY" ]; then
+    if [ -z "$ANTHROPIC_AUTH_TOKEN" ]; then
         echo "❌ ERRO: A chave ANTHROPIC_API_KEY não foi encontrada ou está vazia no arquivo .env!"
         echo "Por favor, adicione sua API Key do MiniMax no .env e rode ./claude.sh novamente."
         exit 1
