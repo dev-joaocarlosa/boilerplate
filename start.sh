@@ -14,7 +14,7 @@ if [ ! -f .env ]; then
 fi
 
 # Subir os containers apontando para o arquivo dentro de .devcontainer
-docker compose -f .devcontainer/docker-compose.yml up -d
+docker compose --env-file .env -f .devcontainer/docker-compose.yml up -d
 
 echo "✅ Containers iniciados com sucesso!"
 echo "🌍 Aplicação: http://boilerplate.localhost"
