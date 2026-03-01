@@ -8,7 +8,10 @@ RUN rm -f /etc/apt/sources.list.d/yarn.list \
     git \
     jq \
     unzip \
-    && apt-get clean -y && rm -rf /var/lib/apt/lists/*
+    && curl -fsSL https://deb.nodesource.com/setup_22.x | bash - \
+    && apt-get install -y nodejs \
+    && apt-get clean -y && rm -rf /var/lib/apt/lists/* \
+    && docker-php-ext-install pdo pdo_mysql
 
 # Install Composer
 RUN curl -sS https://getcomposer.org/installer | php -- --install-dir=/usr/local/bin --filename=composer
