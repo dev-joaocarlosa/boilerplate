@@ -3,9 +3,7 @@
   "dockerComposeFile": "docker-compose.yml",
   "service": "app",
   "workspaceFolder": "/workspace",
-  
   "remoteUser": "root",
-  
   "features": {
     "ghcr.io/devcontainers/features/docker-outside-of-docker:1": {
       "version": "latest",
@@ -22,14 +20,11 @@
       "ppa": "false"
     }
   },
-  
-  "onCreateCommand": "mkdir -p /workspace/.context/skills /workspace/.context/rules /workspace/.context/prompts /workspace/.context/agents",
+  "onCreateCommand": "mkdir -p /workspace/.claude/skills /workspace/.claude/rules /workspace/.claude/prompts /workspace/.claude/agents",
   "postCreateCommand": "bash .devcontainer/setup.sh",
-  
   "runArgs": [
     "--init"
   ],
-  
   "customizations": {
     "vscode": {
       "settings": {
@@ -46,7 +41,6 @@
       ]
     }
   },
-
   "remoteEnv": {
     "ANTHROPIC_BASE_URL": "https://api.minimax.io/anthropic",
     "API_TIMEOUT_MS": "3000000",
