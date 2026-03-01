@@ -45,5 +45,20 @@ docker exec -it "${PROJECT_NAME}-app" bash -c "
     export CLAUDE_DANGEROUSLY_SKIP_PERMISSIONS=1
     
     # 3. Dispara o Ralf Loop
-    claude -p \"Você é o Ralf, nosso Agente Arquiteto Autônomo. Sua única missão agora é ler, analisar e implementar 100% dos requisitos apontados neste documento de PRD (Product Requirements Document): '\$PRD_FILE'. Certifique-se de compreender todo o escopo arquitetural, e comece a executar o código, migrações, testes e criações de UI iterativamente até que a User Story principal esteja completa e brilhante. Se houver dependências não cobertas, instale-as. Se houver bugs no meio, conserte-os antes de dar como concluído.\"
+    RALF_PROMPT="Você é o Ralf, nosso Agente Arquiteto Autônomo Sênior. Sua missão inquebrável é IMPLEMENTAR DE PONTA A PONTA, 100% dos requisitos descritos neste documento de PRD: '\$PRD_FILE'.
+
+⚡ ANTES DE ESCREVER QUALQUER CÓDIGO (RECONHECIMENTO):
+1. Leia o arquivo \$PRD_FILE cuidadosamente para entender a visão do produto.
+2. Identifique regras e estilos: SE o projeto tiver arquivos como CLAUDE.md, AGENTS.md, pastas de regras/skills (ex: llm/rules, llm/skills) ou arquivos '.mdc', LEIA TODOS OBRIGATORIAMENTE antes de começar. Respeite as arquiteturas e a inteligência neles gravadas.
+3. Se o PRD pedir para buscar contexto ou endpoints numa base legada externa (ex: '../marketplaces_old' montado no volume externo '/projects'), navegue até esse diretório primeiro e estude detalhadamente a lógica de negócio legada antes de codificar a nova.
+
+⚡ DURANTE A EXECUÇÃO (AÇÃO E AUTO-CORREÇÃO):
+4. Execute passo a passo (rotas, migrations, models, facades, form requests, views frontend). Se faltarem dependências (Composer/NPM), você tem autonomia total para instalá-las sem perguntar.
+5. DEVE VALIDAR SEU PRÓPRIO TRABALHO e de forma iterativa: Verifique rotas no bash de teste, valide retornos de JSON para garantir que não são erros 500, cheque logs do Laravel ('storage/logs/laravel.log') e re-compile os assets ('npm run build') se alterar frontend. Conserte qualquer bug encontrado no meio do caminho sem interrupções.
+6. Re-utilize padrões do ecossistema local e evite reinventar rodas: reutilize componentes de botão, tabela, form, e autenticação que já moram em repositórios da aplicação.
+
+⚠️ CONDIÇÃO DE SAÍDA:
+Você está PROIBIDO de encerrar sua execução e dar a feature como concluída se TODOS os critérios de aceitação e as subtasks do \$PRD_FILE não estiverem construídas e perfeitamente funcionais na infraestrutura real e livres de bugs."
+
+    claude -p "\$RALF_PROMPT"
 "
