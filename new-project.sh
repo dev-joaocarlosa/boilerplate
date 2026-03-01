@@ -48,6 +48,12 @@ sed -i '' "s/boilerplate/${PROJECT_NAME}/g" start.sh
 if [ -f ".env" ]; then
     sed -i '' "s/APP_NAME=Laravel/APP_NAME=${PROJECT_NAME}/g" .env
     sed -i '' "s/APP_URL=http:\/\/localhost/APP_URL=http:\/\/${PROJECT_NAME}.localhost/g" .env
+    
+    # 🎲 Resolve conflito de porta do MySQL para múltiplos projetos rodando em paralelo
+    RANDOM_PORT=$((33061 + ($RANDOM % 1000)))
+    echo "" >> .env
+    echo "# Porta Externa Escalonada Automaticamente pelo Scaffold" >> .env
+    echo "FORWARD_DB_PORT=${RANDOM_PORT}" >> .env
 fi
 
 # 5. Create remote repository using GitHub CLI (gh)
@@ -64,4 +70,4 @@ fi
 echo "🎉 Pronto! O seu novo ambiente autônomo está pronto."
 echo "➡️  Próximos passos:"
 echo "   cd ${TARGET_DIR}"
-echo "   code . (e abra no Dev Container!)"
+echo "   antigravity . (para abrir e provisionar seu Assistente IA!)"
