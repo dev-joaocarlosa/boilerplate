@@ -9,6 +9,7 @@ services:
     container_name: boilerplate-app
     volumes:
       - ..:/workspace:cached
+      - ../..:/projects:cached
     networks:
       - sail
       - local-infra-net
