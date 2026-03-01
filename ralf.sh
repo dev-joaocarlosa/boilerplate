@@ -64,8 +64,8 @@ export ANTHROPIC_MODEL="MiniMax-M2.5"
 export ANTHROPIC_SMALL_FAST_MODEL="MiniMax-M2.5"
 export CLAUDE_DANGEROUSLY_SKIP_PERMISSIONS=1
 
-# Dispara o Ralf lendo o prompt do arquivo (sem conflito de aspas!)
-claude --dangerouslySkipPermissions -p "\$(cat /tmp/ralf_prompt.txt)"
+# Dispara o Ralf lendo o prompt do arquivo, com todas as ferramentas liberadas
+claude -p "\$(cat /tmp/ralf_prompt.txt)" --allowedTools all
 ENDOFSCRIPT
 
 # 3. Copia ambos os arquivos pro container
