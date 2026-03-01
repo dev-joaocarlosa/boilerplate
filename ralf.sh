@@ -20,7 +20,7 @@ echo "📄 PRD Detectado: $PRD_FILE"
 echo "🤖 Acordando o Ralf (Engenheiro Especialista) dentro de ${PROJECT_NAME}-app..."
 echo "Aviso: Ele pode destruir, criar e modificar o que achar necessário para entregar a feature!"
 
-# Escreve o prompt em um arquivo temporário para evitar conflitos de aspas
+# 1. Escreve o prompt num arquivo temporário (sem conflito de aspas)
 PROMPT_FILE=$(mktemp /tmp/ralf_prompt.XXXXXX.txt)
 cat > "$PROMPT_FILE" << ENDOFPROMPT
 Você é o Ralf, nosso Engenheiro Especialista Sênior e Arquiteto Autônomo. Sua missão inquebrável é IMPLEMENTAR DE PONTA A PONTA, 100% dos requisitos descritos neste documento de PRD: $PRD_FILE.
@@ -39,33 +39,40 @@ Você é o Ralf, nosso Engenheiro Especialista Sênior e Arquiteto Autônomo. Su
 Você está PROIBIDO de encerrar sua execução e dar a feature como concluída se TODOS os critérios de aceitação e as subtasks do PRD não estiverem construídas e perfeitamente funcionais na infraestrutura real e livres de bugs.
 ENDOFPROMPT
 
-# Copia o arquivo de prompt para dentro do container
+# 2. Escreve o script de execução completo num arquivo temporário
+SCRIPT_FILE=$(mktemp /tmp/ralf_runner.XXXXXX.sh)
+cat > "$SCRIPT_FILE" << ENDOFSCRIPT
+#!/bin/bash
+cd /workspace
+
+# Carrega variáveis de segurança
+if [ -f .env ]; then
+    TOKEN=\$(grep -E '^ANTHROPIC_API_KEY=' .env | cut -d '=' -f2- | tr -d ' \r\n')
+    export ANTHROPIC_AUTH_TOKEN="\$TOKEN"
+fi
+
+if [ -z "\$ANTHROPIC_AUTH_TOKEN" ]; then
+    echo "❌ ERRO: ANTHROPIC_API_KEY vazia no .env"
+    exit 1
+fi
+
+# Ativa bypass da Anthropic -> MiniMax
+export ANTHROPIC_BASE_URL="https://api.minimax.io/anthropic"
+export API_TIMEOUT_MS="3000000"
+export CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC="1"
+export ANTHROPIC_MODEL="MiniMax-M2.5"
+export ANTHROPIC_SMALL_FAST_MODEL="MiniMax-M2.5"
+export CLAUDE_DANGEROUSLY_SKIP_PERMISSIONS=1
+
+# Dispara o Ralf lendo o prompt do arquivo (sem conflito de aspas!)
+claude -p "\$(cat /tmp/ralf_prompt.txt)"
+ENDOFSCRIPT
+
+# 3. Copia ambos os arquivos pro container
 docker cp "$PROMPT_FILE" "${PROJECT_NAME}-app:/tmp/ralf_prompt.txt"
-rm -f "$PROMPT_FILE"
+docker cp "$SCRIPT_FILE" "${PROJECT_NAME}-app:/tmp/ralf_runner.sh"
+docker exec "${PROJECT_NAME}-app" chmod +x /tmp/ralf_runner.sh
+rm -f "$PROMPT_FILE" "$SCRIPT_FILE"
 
-# Entra no Docker e dispara o Ralf com o prompt do arquivo (sem risco de quoting)
-docker exec -it "${PROJECT_NAME}-app" bash << DOCKERSHELL
-    cd /workspace
-
-    # 1. Carrega variáveis de segurança
-    if [ -f .env ]; then
-        TOKEN=\$(grep -E '^ANTHROPIC_API_KEY=' .env | cut -d '=' -f2- | tr -d ' \r\n')
-        export ANTHROPIC_AUTH_TOKEN="\$TOKEN"
-    fi
-
-    if [ -z "\$ANTHROPIC_AUTH_TOKEN" ]; then
-        echo "❌ ERRO: ANTHROPIC_API_KEY vazia no .env"
-        exit 1
-    fi
-
-    # 2. Ativa bypass da Anthropic -> MiniMax
-    export ANTHROPIC_BASE_URL="https://api.minimax.io/anthropic"
-    export API_TIMEOUT_MS="3000000"
-    export CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC="1"
-    export ANTHROPIC_MODEL="MiniMax-M2.5"
-    export ANTHROPIC_SMALL_FAST_MODEL="MiniMax-M2.5"
-    export CLAUDE_DANGEROUSLY_SKIP_PERMISSIONS=1
-
-    # 3. Dispara o Ralf lendo o prompt do arquivo (sem conflito de aspas!)
-    claude -p "\$(cat /tmp/ralf_prompt.txt)"
-DOCKERSHELL
+# 4. Executa o script interativamente (com TTY real)
+docker exec -it "${PROJECT_NAME}-app" /tmp/ralf_runner.sh
