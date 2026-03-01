@@ -10,6 +10,13 @@ fi
 PROJECT_NAME=$1
 TARGET_DIR="../${PROJECT_NAME}"
 
+# Trava Master de Segurança: Impede a destruição acidental da Semente/Base
+if [[ "$PROJECT_NAME" == "boilerplate" || "$PROJECT_NAME" == "." ]]; then
+    echo "❌ OPERAÇÃO RECUSADA: Você NÃO PODE destruir o Boilerplate Root!"
+    echo "O Boilerplate é o coração da infraestrutura. O script serve apenas para filhotes."
+    exit 1
+fi
+
 echo "⚠️  ATENÇÃO: Você está prestes a DESTRUIR a infraestrutura do projeto '${PROJECT_NAME}'."
 echo "Isso removerá:"
 echo "1. Os containers Docker associados"
