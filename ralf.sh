@@ -64,8 +64,10 @@ export ANTHROPIC_MODEL="MiniMax-M2.5"
 export ANTHROPIC_SMALL_FAST_MODEL="MiniMax-M2.5"
 export CLAUDE_DANGEROUSLY_SKIP_PERMISSIONS=1
 
-# Dispara o Ralf lendo o prompt do arquivo, com todas as ferramentas liberadas
-claude -p "\$(cat /tmp/ralf_prompt.txt)" --allowedTools all
+# Dispara o Ralf com saída visível em tempo real no terminal
+claude -p "\$(cat /tmp/ralf_prompt.txt)" \
+    --permission-mode bypassPermissions \
+    --verbose
 ENDOFSCRIPT
 
 # 3. Copia ambos os arquivos pro container
