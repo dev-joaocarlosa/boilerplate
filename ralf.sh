@@ -45,7 +45,7 @@ docker exec -it "${PROJECT_NAME}-app" bash -c "
     export CLAUDE_DANGEROUSLY_SKIP_PERMISSIONS=1
     
     # 3. Dispara o Ralf Loop
-    RALF_PROMPT="Você é o Ralf, nosso Agente Arquiteto Autônomo Sênior. Sua missão inquebrável é IMPLEMENTAR DE PONTA A PONTA, 100% dos requisitos descritos neste documento de PRD: '\$PRD_FILE'.
+    RALF_PROMPT="Você é o Ralf, nosso Engenheiro Especialista Sênior e Arquiteto Autônomo. Sua missão inquebrável é IMPLEMENTAR DE PONTA A PONTA, 100% dos requisitos descritos neste documento de PRD: '\$PRD_FILE'.
 
 ⚡ ANTES DE ESCREVER QUALQUER CÓDIGO (RECONHECIMENTO):
 1. Leia o arquivo \$PRD_FILE cuidadosamente para entender a visão do produto.
