@@ -54,6 +54,12 @@ if [ -f ".env" ]; then
     echo "" >> .env
     echo "# Porta Externa Escalonada Automaticamente pelo Scaffold" >> .env
     echo "FORWARD_DB_PORT=${RANDOM_PORT}" >> .env
+
+    # 🔑 Gera chave de criptografia do Laravel preenchendo o APP_KEY vazio
+    if grep -q "^APP_KEY=$" .env; then
+        GENERATED_KEY="base64:$(openssl rand -base64 32)"
+        sed -i '' "s|^APP_KEY=$|APP_KEY=${GENERATED_KEY}|g" .env
+    fi
 fi
 
 # 5. Create remote repository using GitHub CLI (gh)
