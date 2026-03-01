@@ -16,5 +16,13 @@ RUN rm -f /etc/apt/sources.list.d/yarn.list \
 # Install Composer
 RUN curl -sS https://getcomposer.org/installer | php -- --install-dir=/usr/local/bin --filename=composer
 
+# Install global Claude Code & AMP CLI
+RUN npm install -g @anthropic-ai/claude-code \
+    && curl -fsSL https://ampcode.com/install.sh | bash
+
+# Create Claude Code configuration directory and settings for root
+RUN mkdir -p /root/.claude \
+    && echo '{\n  "claudeCode": {\n    "selectedModel": "MiniMax-M2.5",\n    "theme": "dark"\n  }\n}' > /root/.claude/settings.json
+
 # Set user to root (since it's dangerous mode for Ralph)
 USER root

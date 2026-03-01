@@ -28,7 +28,18 @@ echo "🧹 Removendo vínculos do Boilerplate."
 # 3. Create .env from example (Minimax keys and DB are fresh)
 if [ -f ".env.example" ]; then
     cp .env.example .env
-    echo "📄 Arquivo .env gerado. O seu ANTHROPIC_AUTH_TOKEN (MiniMax) precisa ser preenchido nele ou no DevContainer depois!"
+    echo "📄 Arquivo .env base gerado."
+    
+    # 🥷 Transporte Seguro de API Key (Copia a chave da Matriz, sem commitar no Github)
+    if [ -f "../boilerplate/.env" ]; then
+        MATRIZ_KEY=$(grep -E "^ANTHROPIC_API_KEY=" ../boilerplate/.env | cut -d "=" -f2-)
+        if [ ! -z "$MATRIZ_KEY" ]; then
+            sed -i '' "s|^ANTHROPIC_API_KEY=$|ANTHROPIC_API_KEY=${MATRIZ_KEY}|g" .env
+            echo "🔑 Chave da API do MiniMax injetada com sucesso a partir da Matriz!"
+        else
+            echo "⚠️  Não achei a chave ANTHROPIC_API_KEY no ../boilerplate/.env. Você precisará preencher manualmente."
+        fi
+    fi
 fi
 
 # 4. Initialize fresh git repository
