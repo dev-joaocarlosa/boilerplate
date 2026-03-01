@@ -13,8 +13,9 @@ services:
       - sail
       - local-infra-net
     depends_on:
-      - mysql
-    command: bash -c "cd /workspace && if [ ! -d vendor ]; then composer install --no-interaction; fi && if [ ! -d node_modules ]; then npm install && npm run build; fi && php artisan serve --host=0.0.0.0 --port=8000 & sleep infinity"
+      mysql:
+        condition: service_healthy
+    command: bash -c "cd /workspace && if [ ! -d vendor ]; then composer install --no-interaction; fi && php artisan migrate --force && if [ ! -d node_modules ]; then npm install && npm run build; fi && php artisan serve --host=0.0.0.0 --port=8000 & sleep infinity"
     labels:
       - "traefik.enable=true"
       - "traefik.http.routers.boilerplate.rule=Host(`boilerplate.localhost`)"
@@ -65,7 +66,8 @@ services:
       - "traefik.http.services.pma-boilerplate.loadbalancer.server.port=80"
       - "traefik.docker.network=local-infra-net"
     depends_on:
-      - mysql
+      mysql:
+        condition: service_healthy
 
 networks:
   sail:
