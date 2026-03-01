@@ -44,6 +44,12 @@ echo "🏷️ Personalizando nomes e URLs do projeto..."
 sed -i '' "s/boilerplate/${PROJECT_NAME}/g" .devcontainer/docker-compose.yml
 sed -i '' "s/boilerplate/${PROJECT_NAME}/g" start.sh
 
+# Atualiza configurações vitais no arquivo .env
+if [ -f ".env" ]; then
+    sed -i '' "s/APP_NAME=Laravel/APP_NAME=${PROJECT_NAME}/g" .env
+    sed -i '' "s/APP_URL=http:\/\/localhost/APP_URL=http:\/\/${PROJECT_NAME}.localhost/g" .env
+fi
+
 # 5. Create remote repository using GitHub CLI (gh)
 echo "☁️  Criando repositório na organização ${ORG_NAME} via Github CLI..."
 if ! command -v gh &> /dev/null; then
