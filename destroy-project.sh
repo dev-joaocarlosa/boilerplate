@@ -10,11 +10,11 @@ fi
 PROJECT_NAME=$1
 TARGET_DIR="../${PROJECT_NAME}"
 
-echo "⚠️  ATENÇÃO: Você está prestes a DESTRUIR o projeto '${PROJECT_NAME}'."
+echo "⚠️  ATENÇÃO: Você está prestes a DESTRUIR a infraestrutura do projeto '${PROJECT_NAME}'."
 echo "Isso removerá:"
 echo "1. Os containers Docker associados"
-echo "2. O volume do banco de dados (Dados perdidos permanentemente)"
-echo "3. A pasta local do código-fonte (${TARGET_DIR})"
+echo "2. O volume do banco de dados (Dados do banco perdidos permanentemente)"
+echo "PS: Os seus arquivos do projeto e a pasta local (${TARGET_DIR}) SERÃO MANTIDOS intactos."
 echo ""
 read -p "Tem certeza que deseja continuar? (y/N) " -n 1 -r
 echo ""
@@ -28,13 +28,8 @@ if [[ $REPLY =~ ^[Yy]$ ]]; then
     echo "💾 Removendo Volume do Banco de Dados (${PROJECT_NAME}_${PROJECT_NAME}-mysql-data)..."
     docker volume rm "${PROJECT_NAME}_${PROJECT_NAME}-mysql-data" 2>/dev/null || true
     
-    # 3. Remove local project directory
-    if [ -d "$TARGET_DIR" ]; then
-        echo "🗑️  Removendo pasta raiz do projeto (${TARGET_DIR})..."
-        rm -rf "$TARGET_DIR"
-    else
-        echo "ℹ️  A pasta local ${TARGET_DIR} já não existia."
-    fi
+    # 3. Informa o usuário sobre a manutenção da pasta
+    echo "ℹ️  A pasta local com seus códigos fonte (${TARGET_DIR}) não foi alterada."
 
     echo "✅ Projeto '${PROJECT_NAME}' e todos os seus resquícios de Docker foram completamente vaporizados!"
     echo "💡 Lembrete: O repositório no GitHub deve ser excluído manualmente via painel web ou CLI: gh repo delete dev-joaocarlosa/${PROJECT_NAME} --yes"
