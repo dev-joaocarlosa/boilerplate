@@ -1,5 +1,5 @@
 ---
-alwaysApply: false
+alwaysApply: true
 ---
 # Services Pattern
 
@@ -52,18 +52,22 @@ NotificationService::notifyCampaignCreated($campaign);
 - **Controller**: Orquestra chamadas a diferentes Services
 - **Método Público do Service**: Orquestra apenas métodos privados do MESMO domínio
 
+### Atenção: Tamanho do Service (Evite God Classes)
+**Muitos métodos públicos em um único Service é um anti-pattern.** Se você tem dezenas de métodos públicos de manipulação (`pause`, `activate`, `create`, `stats`, `delete`, `updatePrice`), divida o contexto em múltiplos serviços menores e focados (ex: `ListingStatusService`, `ListingQueryService`, `ListingCreationService`).
+
 ---
 
 ## Estrutura Básica
 
 ```php
+// 🚫 NUNCA usar 'final class'. Usar apenas 'class'
 class [ServiceName] implements [ServiceName]Interface
 {
     use [TraitName];
     private const [CONSTANT] = 'valor';
 
     /**
-     * @inheritDoc
+     * {@inheritDoc}
      */
     public function [method]([tipo] $param): array
     {
@@ -92,17 +96,32 @@ class [ServiceName] implements [ServiceName]Interface
 ## Regras de Métodos
 
 ### ✅ Métodos Públicos
-- **SEMPRE** usar `@inheritDoc`
+- O DocBlock DEVE conter EXCLUSIVAMENTE a anotação `{@inheritDoc}` (pois o contrato base com as documentações vive na Interface). Exemplo obrigatório:
+  ```php
+  /**
+   * {@inheritDoc}
+   */
+  public function meuMetodo(): void
+  ```
 - **ÚNICO** try/catch por método público
 - Responsável por orquestrar chamadas aos métodos privados
 - Logging de sucesso e erro
 
 ### ✅ Métodos Privados
-- Descrição **EM PORTUGUÊS**
-- PHPDoc completo com tipos de parâmetros e retorno
+- O DocBlock DEVE conter a descrição exata da funcionalidade em português seguido das tipagens completas (`@param` e `@return`). Exemplo obrigatório:
+  ```php
+  /**
+   * Cria array de resposta
+   * 
+   * @param array $response
+   * @param MercadoLivreErrorEnum $errorEnum
+   * @return void
+   */
+  private function createResponse(array $response, MercadoLivreErrorEnum $errorEnum): void
+  ```
 - **SEM** try/catch (deixar para o método público)
-- **SEM** descrição dos parâmetros no PHPDoc
 - **SEMPRE** usar tipagem específica de Entidades
+- 🚫 **PROIBIÇÃO ABSOLUTA: ZERO MODELS NO SERVICE.** Você está ESTRITAMENTE PROIBIDO de chamar ou instanciar Models do Eloquent (`Model::create`, `Model::with`, `Model::findOrFail`, `Model::query()`, `$model->update()`, etc) dentro do Service. TODA e qualquer interação, query, persistência ou manipulação de banco de dados DEVE ser invocada através de um método do `Repository` via Facade.
 - 🚫 **NUNCA** usar tipo genérico `object` quando existe uma Entity específica
 - 🚫 **NUNCA** criar métodos que apenas façam proxy para Repositories ou outros Services
 - 🚫 **NUNCA** chamar outros métodos privados (evitar cascata)
@@ -115,15 +134,15 @@ class [ServiceName] implements [ServiceName]Interface
 ## Logging Pattern
 
 - Usar Log facade (ou ApiLog se disponível)
-- Prefixo '[ServiceName] - [Action]'
+- Prefixo obrigatório: '[NomeDoProjeto] - [ServiceName] - [NomeDoMetodo] - [Estado/Ação]'
 - Logs de sucesso com `info()`
 - Logs de erro com `error()`
 - **SEMPRE** usar Log diretamente onde necessário, **NUNCA** criar métodos para encapsular logs
 
 ```php
-Log::info('CampaignService - create - Starting', ['data' => $data]);
-Log::info('CampaignService - create - Success', ['campaign_id' => $id]);
-Log::error('CampaignService - create - Error', ['exception' => $exception]);
+Log::info('ProjectName - CampaignService - create - Starting', ['data' => $data]);
+Log::info('ProjectName - CampaignService - create - Success', ['campaign_id' => $id]);
+Log::error('ProjectName - CampaignService - create - Error', ['exception' => $exception]);
 ```
 
 ### 🚫 Proibição de Métodos de Log
@@ -134,7 +153,7 @@ Log::error('CampaignService - create - Error', ['exception' => $exception]);
 // ❌ ERRADO - Método para encapsular log
 private function logSuccess(string $method, array $data): void
 {
-    Log::info("CampaignService - {$method} - Success", $data);
+    Log::info("ProjectName - CampaignService - {$method} - Success", $data);
 }
 
 // ✅ CORRETO - Log usado diretamente
@@ -143,13 +162,13 @@ public function create(array $data): CampaignEntity
     try {
         $campaign = $this->persistCampaign($data);
         
-        Log::info('CampaignService - create - Success', [
+        Log::info('ProjectName - CampaignService - create - Success', [
             'campaign_id' => $campaign->id,
         ]);
         
         return $campaign;
     } catch (Exception $e) {
-        Log::error('CampaignService - create - Error', [
+        Log::error('ProjectName - CampaignService - create - Error', [
             'exception' => $e,
         ]);
         
@@ -307,7 +326,7 @@ public function createCampaign(array $data): CampaignEntity
         $payload  = $this->preparePayload($data);      // ✅ Público chama privado
         $campaign = $this->persistCampaign($payload);  // ✅ Público chama privado
         
-        Log::info('CampaignService - createCampaign - Success', [
+        Log::info('ProjectName - CampaignService - createCampaign - Success', [
             'campaign_id' => $campaign->id,
         ]);
         
@@ -376,6 +395,5 @@ $data = [
 - ✅ Exceptions específicas (ClientException, UnauthorizedException)
 - ✅ Uses agrupados com `{}`
 - 🚫 **SEM comentário na classe**
-- 🚫 **SEM descrição nos parâmetros**
 - 🚫 **SEM comentários em linhas de código**
 - 🚫 **SEM IFs aninhados ou else**

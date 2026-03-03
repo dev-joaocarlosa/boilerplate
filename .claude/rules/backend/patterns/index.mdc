@@ -29,14 +29,18 @@ Padrões de código para projetos Laravel organizados por tema.
 
 ### 🚫 Proibições Absolutas
 - **Responsabilidade Múltipla**: SEM métodos que fazem mais de uma coisa
+- **Classes Finais**: SEM uso de `final class` para Controllers, Services e Jobs. Sempre usar apenas `class`.
 - **Classes**: SEM comentários de classe
 - **Parâmetros**: SEM descrição no PHPDoc
 - **Código**: SEM comentários inline
 - **Condições**: SEM if/else aninhados - usar early returns
 - **Tipagem**: SEM uso de tipo genérico `object` quando existe Entity específica
 - **Métodos Proxy**: SEM métodos privados que apenas façam proxy para Repositories/Services
+- **Acesso Direto à Model**: SEM instanciar Eloquent Models diretamente de dentro de um Service. Sempre invoque a Facade do Repository.
+- **Testes não Solicitados**: SEM gerar arquivos ou cenários de testes (unit/feature) a menos que explicitamente ordenado pelo usuário.
+- **Try/Catch em Controller**: SEM blocos `try/catch` manuais dentro de Controllers. Toda a tratativa ocorre no Error Handler após erro no Service.
 - **Cascata de Privados**: Métodos privados NÃO DEVEM chamar outros métodos privados
-- **Métodos de Log**: SEM métodos privados para encapsular logs - usar Log/ApiLog diretamente
+- **Métodos de Log**: SEM métodos privados para encapsular logs - usar Log/ApiLog diretamente com o prefixo do projeto [NomeDoProjeto] - ...
 - **Log Duplicado**: SEM log no catch de `ClientException` - log já feito na origem
 - **Imports Inline**: SEM imports inline (`\App\...`) - SEMPRE usar bloco de `use` statements
 - **Mensagens Hardcoded**: SEM mensagens de erro hardcoded - SEMPRE usar Enums

@@ -1,5 +1,5 @@
 ---
-alwaysApply: false
+alwaysApply: true
 ---
 # Controllers Pattern
 
@@ -185,3 +185,13 @@ public function saveBudget(array $budgetData): void
 - ✅ **SEMPRE** retornar `JsonResponse` no controller
 - ✅ **NÃO** retornar nada dentro do closure do `dispatch()` para 204
 - 🚫 **NUNCA** usar `return $this->getResponse()->noContent()` dentro do closure
+
+## 🚫 Proibições Absolutas no Controller
+
+O Controller atua APENAS como um proxy/orquestrador. Toda lógica de negócio, tratamento de dados, regras e loops pertencem ao Service.
+- 🚫 **NUNCA usar 'final class'**: Controllers devem usar apenas `class`.
+- 🚫 **NUNCA usar `response()->json(...)` de forma avulsa**: Utilize sempre `$this->getResponse()->dispatch(function () { ... })` para envolver e proteger a execução do Service, mesmo que a saída seja API.
+- 🚫 **NUNCA ter lógica do Inertia ou Redirect solto**: Mesmo que o retorno seja visual (ex: `Inertia::render` ou `redirect()->to()`), as invocações de domínio que os precedem **também** podem e devem estar encapsuladas no padrão `dispatch()` dependendo de como o helper espera a closure, ou minimamente, o controller nunca pode ter código tipo `new Model()`.
+- 🚫 **NUNCA ter regra de negócio (IFs, Lógica, Instanciação)**: Se você se pegar escrevendo `new User()` ou instanciando Sessions e gerando hashes avulsos dentro do método do Controller (igual ao auth oauth), mova tudo para o Service. O Controller **apenas** repassa a request pra ele.
+- 🚫 **NUNCA usar blocos `try/catch`**: O tratamento de erros (exceções HTTP, validações de negócio, falhas internas) é resolvido nativamente pelo Service em conjunto com o Exception Handler e Facades de Error.
+- 🚫 **NUNCA instanciar ou processar a Request de forma complexa**: Limite-se a ler atributos com `$this->getPostAttributes()`, `$this->getQueries()` ou `$request->validated()` vindo de Form Requests. Não varra lógicas dentro do controller.

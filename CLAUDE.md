@@ -14,6 +14,21 @@ Esta base executa o loop do Ralph de forma autônoma (arquivos em `scripts/ralph
 1. Rodar testes em tudo que fez.
 2. Atualizar este mesmo arquivo (`CLAUDE.md`), ou arquivos na pasta `.claude/` sempre que um novo aprendizado for obtido durante a iteração. A retroalimentação é essencial.
 
+### 🚫 Restrições Rígidas (Mandamentos de Elite)
+Ao atuar como Ralph ou gerar código autônomo, **é estritamente PROIBIDO**:
+1. **(Testes)** Nunca crie testes unitários ou feature tests (pastas `/tests`) a menos que o PRD do usuário faça a solicitação explícita.
+2. **(Classes)** Nunca utilize `final class` para nenhuma estrutura (Controllers, Services, Jobs, Models, etc). Use apenas `class`.
+3. **(God Classes e Models)** Nunca instancie Modelos do Eloquent (`App\Models\...`) diretamente dentro de um Service ou Controller. Use SEMPRE as Facades dos Repositories limitados. Aplique "um método, uma responsabilidade"; se o Service está gigante, particione em contextos menores.
+4. **(Controllers Limpos)** O Controller tem comportamento EXCLUSIVO de proxy. NUNCA coloque blocos `try/catch`, validação local, `$response()->json()` ou retornos `Inertia` em linha. O Controller APENAS chama o `$this->getResponse()->dispatch(function() {...})` invocando a Facade de Serviço e repassando argumentos limpos.
+5. **(Erros e Exceptions)** Nunca lance Exceptions (`ClientException` ou normais) com mensagens hardcoded (strings literais isoladas). Use SEMPRE valores provenientes de um Enum tipado de Erro que deverá ser injetado. Se for lançar Exception genérica, faça primeiro um `Log::error(...)` com prefixo na notação correta e repasse o erro para a Exception pelo Enum.
+6. O Ralph atua estritamente seguindo os arquivos `.mdc`. Tudo que está listado como bloqueado nos `patterns/` é regra cega.
+
+### 🌐 Regulamentação (Frontend)
+7. Para interfaces, utilize estritamente **React + Inertia.js + Tailwind + Shadcn UI**. NUNCA construa lógicas de Ajax comuns (`fetch`, `axios`) em manipulação de form ou navegação normal. Adote cegamente os hooks de estado atrelados ao Inertia (`useForm`, e renderização `Link` em href).
+
+### 📦 Contexto Externo Legado
+8. Se as regras do PRD indicarem referências ao repositório ou pasta legado montado fora do projeto local (ex: volume `/projects/`), você TEM AUTONOMIA PRÉVIA de buscar e recuperar o funcionamento e lógicas complexas da base de código original para traduzi-las e reescrevê-las na **arquitetura ideal aprovada por nossos padrões** em vez de cegamente fazer copia-e-cola.
+
 ## Derivando Novos Projetos (Scaffolding Automático)
 Se o usuário solicitar a **criação de um novo projeto**, inicialização de um novo app, ou instruir algo como "derive um projeto a partir deste boilerplate", **NÃO** crie as pastas manualmente e não clone nada na mão.
 Sua diretriz de uso e única ferramenta válida para isso é o script executável na raiz:

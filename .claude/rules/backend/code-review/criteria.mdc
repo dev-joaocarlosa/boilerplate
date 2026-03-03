@@ -281,6 +281,10 @@ catch (Exception $e) {
 - Propriedades do shop acessadas diretamente
 - Falta de testes
 - Exposição de Exception genérica
+- Uso de `final class`
+- Ausência ou formato incorreto do Prefixo do Projeto no Log `[NomeDoProjeto] - ...`
+- Acesso à banco de dados ou Eloquent Models diretamente de dentro de Services.
+- Uso de `try/catch` manual, `response()->json()` ou `$request->validate()` dentro de Controllers.
 
 ### 🟡 MELHORIA (Sugestão)
 - Método muito longo (>20 linhas)
